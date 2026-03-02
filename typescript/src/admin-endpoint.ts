@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from 'express';
 import { assertChaosAllowed } from './guard.js';
 import { ChaosController } from './controller.js';
-import type { FaultTarget, FaultConfig } from './fault-types.js';
+import type { FaultConfig } from './fault-types.js';
 import { getLogger } from './logger.js';
 
 const logger = getLogger('chaos-admin');
@@ -32,7 +32,7 @@ export function registerChaosEndpoint(app: Express): void {
       const body = req.body as InjectBody;
       const controller = ChaosController.getInstance();
       const faultId = controller.inject(
-        body.target as FaultTarget,
+        body.target,
         body.config as FaultConfig,
         body.durationMs,
       );
