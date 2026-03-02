@@ -2,8 +2,8 @@
 export type FaultTarget = string;
 
 /** Validates that a value is a non-empty string suitable as a fault target. */
-export function isFaultTarget(value: string): value is FaultTarget {
-  return value.length > 0;
+export function isFaultTarget(value: unknown): value is FaultTarget {
+  return typeof value === 'string' && value.length > 0;
 }
 
 /** Types of faults that can be injected. */
