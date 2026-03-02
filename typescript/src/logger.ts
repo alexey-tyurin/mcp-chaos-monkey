@@ -1,10 +1,13 @@
 /** Pluggable logger interface — pino's Logger satisfies this directly. */
 export interface ChaosLogger {
   debug(obj: Record<string, unknown>, msg: string): void;
+  debug(msg: string): void;
   info(obj: Record<string, unknown>, msg: string): void;
   info(msg: string): void;
   warn(obj: Record<string, unknown>, msg: string): void;
+  warn(msg: string): void;
   error(obj: Record<string, unknown>, msg: string): void;
+  error(msg: string): void;
 }
 
 export type ChaosLoggerFactory = (name: string) => ChaosLogger;
@@ -43,7 +46,7 @@ export function createConsoleLogger(name: string): ChaosLogger {
         console.error(prefix, msg, objOrMsg);
       }
     },
-  } as ChaosLogger;
+  };
 }
 
 /** Set the global logger factory. Call once at startup. */
