@@ -1,0 +1,84 @@
+{
+  "name": "mcp-chaos-monkey",
+  "version": "1.0.0",
+  "description": "Chaos/fault injection framework for MCP (Model Context Protocol) projects",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./interceptors/http": {
+      "types": "./dist/interceptors/http-interceptor.d.ts",
+      "import": "./dist/interceptors/http-interceptor.js"
+    },
+    "./interceptors/redis": {
+      "types": "./dist/interceptors/redis-interceptor.d.ts",
+      "import": "./dist/interceptors/redis-interceptor.js"
+    },
+    "./interceptors/auth": {
+      "types": "./dist/interceptors/auth-interceptor.d.ts",
+      "import": "./dist/interceptors/auth-interceptor.js"
+    },
+    "./admin": {
+      "types": "./dist/admin-endpoint.d.ts",
+      "import": "./dist/admin-endpoint.js"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.ts",
+      "import": "./dist/cli.js"
+    }
+  },
+  "bin": {
+    "mcp-chaos": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint src/ tests/",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "mcp",
+    "chaos-engineering",
+    "fault-injection",
+    "testing",
+    "resilience",
+    "chaos-monkey",
+    "model-context-protocol"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "express": ">=4.18.0",
+    "ioredis": ">=5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "express": {
+      "optional": true
+    },
+    "ioredis": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "express": "^4.21.0",
+    "ioredis": "^5.4.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}
