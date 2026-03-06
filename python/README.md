@@ -166,32 +166,131 @@ sync_client = create_chaos_aware_client_sync("weather-api", httpx.Client())
 
 ### Redis Interceptor
 
-Wraps Redis commands (`get`, `set`, `delete`, `hget`, `hset`, `expire`, `ttl`, `keys`, `mget`):
+Monkey-patches Redis client commands (`get`, `set`, `delete`, `hget`, `hset`, `expire`, `ttl`, `keys`, `mget`) to inject faults. Works with both sync `redis.Redis` and async `redis.asyncio.Redis`:
 
 ```python
+import redis
+from mcp_chaos_monkey import ChaosController, ErrorFault, LatencyFault, ConnectionRefusedFault
 from mcp_chaos_monkey.interceptors import wrap_redis_with_chaos
 
+# Your existing Redis client
+redis_client = redis.Redis(host="localhost", port=6379)
+
+# Wrap it with chaos — returns an unwrap function
 unwrap = wrap_redis_with_chaos(redis_client, "redis")
 
-# Later: restore original methods
+# No fault active — commands work normally
+redis_client.set("key", "value")
+redis_client.get("key")  # → b"value"
+
+# Inject a connection error — all Redis commands now raise ConnectionError
+controller = ChaosController.get_instance()
+controller.inject("redis", ErrorFault(status_code=500, message="connection lost"))
+
+try:
+    redis_client.get("key")
+except ConnectionError as e:
+    print(e)  # → "Chaos Redis error: connection lost"
+
+# Simulate Redis being completely unreachable
+controller.clear_all()
+controller.inject("redis", ConnectionRefusedFault())
+
+try:
+    redis_client.set("key", "value")
+except ConnectionError as e:
+    print(e)  # → "Redis connection refused (chaos)"
+
+# Add latency to simulate a slow Redis
+controller.clear_all()
+controller.inject("redis", LatencyFault(delay_ms=500))
+
+redis_client.get("key")  # → takes 500ms, then returns b"value"
+
+# Restore original Redis behavior
+unwrap()
+redis_client.get("key")  # → works instantly, no chaos
+```
+
+**Async Redis** works identically:
+
+```python
+import redis.asyncio as aioredis
+from mcp_chaos_monkey.interceptors import wrap_redis_with_chaos
+
+async_redis = aioredis.Redis(host="localhost", port=6379)
+unwrap = wrap_redis_with_chaos(async_redis, "redis")
+
+# Faults apply to async commands too
+await async_redis.get("key")  # → chaos fault if active
+
 unwrap()
 ```
 
-Works with both sync `redis.Redis` and async `redis.asyncio.Redis`.
-
 ### Auth Interceptor (ASGI Middleware)
 
-ASGI middleware that intercepts auth-related faults:
+ASGI middleware that intercepts authentication faults. Use it with Starlette, FastAPI, or any ASGI framework to simulate auth provider failures:
 
 ```python
+from starlette.applications import Starlette
+from starlette.responses import JSONResponse
+from starlette.routing import Route
+from mcp_chaos_monkey import ChaosController, ErrorFault, LatencyFault, TimeoutFault
 from mcp_chaos_monkey.interceptors import ChaosAuthMiddleware, create_chaos_auth_middleware
 
-# Direct usage with Starlette/FastAPI
+# Your ASGI app
+async def homepage(request):
+    return JSONResponse({"status": "ok"})
+
+app = Starlette(routes=[Route("/", homepage)])
+
+# Add chaos auth middleware — targets "oauth-token" by default
 app = ChaosAuthMiddleware(app, target="oauth-token")
 
-# Factory with preset target
-middleware = create_chaos_auth_middleware("api-key")
-app = middleware(app)
+# No fault active — requests pass through to your app
+# GET / → 200, {"status": "ok"}
+
+# Simulate auth provider returning 401
+controller = ChaosController.get_instance()
+controller.inject("oauth-token", ErrorFault(status_code=401, message="Token expired"))
+# GET / → 401, {"error": "token_invalid", "message": "Token expired"}
+
+# Simulate auth provider being slow (adds 2s delay before forwarding)
+controller.clear_all()
+controller.inject("oauth-token", LatencyFault(delay_ms=2000))
+# GET / → 200 after 2s delay, {"status": "ok"}
+
+# Simulate auth provider hanging (request never completes)
+controller.clear_all()
+controller.inject("oauth-token", TimeoutFault(hang_ms=30_000))
+# GET / → hangs for 30s, client times out
+```
+
+**Custom auth target** — use the factory to target different auth mechanisms:
+
+```python
+# Protect API key validation
+app = create_chaos_auth_middleware("api-key")(app)
+
+# Now faults on "api-key" target affect this middleware
+controller.inject("api-key", ErrorFault(status_code=403, message="Invalid API key"))
+```
+
+**Multiple auth targets with FastAPI:**
+
+```python
+from fastapi import FastAPI
+from mcp_chaos_monkey.interceptors import ChaosAuthMiddleware
+
+app = FastAPI()
+
+# Stack middleware for different auth targets
+app.add_middleware(ChaosAuthMiddleware, target="oauth-token")
+app.add_middleware(ChaosAuthMiddleware, target="api-key")
+
+@app.get("/")
+async def root():
+    return {"status": "ok"}
 ```
 
 ### Admin Endpoints
