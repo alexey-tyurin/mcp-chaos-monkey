@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/alexey-tyurin/mcp-chaos-monkey/schema/fault-config.schema.json",
+  "title": "FaultConfig",
+  "description": "Chaos fault configuration — shared across TypeScript and Python implementations of mcp-chaos-monkey.",
+  "oneOf": [
+    { "$ref": "#/$defs/latency" },
+    { "$ref": "#/$defs/error" },
+    { "$ref": "#/$defs/timeout" },
+    { "$ref": "#/$defs/malformed" },
+    { "$ref": "#/$defs/connection-refused" },
+    { "$ref": "#/$defs/connection-drop" },
+    { "$ref": "#/$defs/rate-limit" },
+    { "$ref": "#/$defs/schema-mismatch" }
+  ],
+  "$defs": {
+    "probability": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Probability of the fault triggering (0–1). Omit for 100%."
+    },
+    "latency": {
+      "type": "object",
+      "required": ["type", "delayMs"],
+      "properties": {
+        "type": { "const": "latency" },
+        "delayMs": { "type": "integer", "minimum": 0, "description": "Delay in milliseconds before forwarding the request." },
+        "probability": { "$ref": "#/$defs/probability" }
+      },
+      "additionalProperties": false
+    },
+    "error": {
+      "type": "object",
+      "required": ["type", "statusCode"],
+      "properties": {
+        "type": { "const": "error" },
+        "statusCode": { "type": "integer", "minimum": 400, "maximum": 599, "description": "HTTP status code to return." },
+        "message": { "type": "string", "description": "Error message body." },
+        "probability": { "$ref": "#/$defs/probability" }
+      },
+      "additionalProperties": false
+    },
+    "timeout": {
+      "type": "object",
+      "required": ["type", "hangMs"],
+      "properties": {
+        "type": { "const": "timeout" },
+        "hangMs": { "type": "integer", "minimum": 0, "description": "Duration to hang in milliseconds before aborting." },
+        "probability": { "$ref": "#/$defs/probability" }
+      },
+      "additionalProperties": false
+    },
+    "malformed": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "malformed" },
+        "corruptResponse": { "type": "boolean", "default": true, "description": "Whether to return corrupted response body." },
+        "probability": { "$ref": "#/$defs/probability" }
+      },
+      "additionalProperties": false
+    },
+    "connection-refused": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "connection-refused" },
+        "probability": { "$ref": "#/$defs/probability" }
+      },
+      "additionalProperties": false
+    },
+    "connection-drop": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "connection-drop" },
+        "afterBytes": { "type": "integer", "minimum": 0, "description": "Drop connection after this many bytes." },
+        "probability": { "$ref": "#/$defs/probability" }
+      },
+      "additionalProperties": false
+    },
+    "rate-limit": {
+      "type": "object",
+      "required": ["type", "retryAfterSeconds"],
+      "properties": {
+        "type": { "const": "rate-limit" },
+        "retryAfterSeconds": { "type": "integer", "minimum": 0, "description": "Value for the Retry-After header in seconds." },
+        "probability": { "$ref": "#/$defs/probability" }
+      },
+      "additionalProperties": false
+    },
+    "schema-mismatch": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "const": "schema-mismatch" },
+        "missingFields": { "type": "array", "items": { "type": "string" }, "description": "Field names to strip from the response." },
+        "probability": { "$ref": "#/$defs/probability" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

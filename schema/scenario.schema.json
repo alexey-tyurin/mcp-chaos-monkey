@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/alexey-tyurin/mcp-chaos-monkey/schema/scenario.schema.json",
+  "title": "ChaosScenario",
+  "description": "A reproducible chaos scenario — shared across TypeScript and Python implementations.",
+  "type": "object",
+  "required": ["name", "description", "faults", "expectedBehavior"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique scenario name."
+    },
+    "description": {
+      "type": "string",
+      "description": "Human-readable description of what the scenario tests."
+    },
+    "faults": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["target", "config"],
+        "properties": {
+          "target": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Fault target name."
+          },
+          "config": {
+            "$ref": "fault-config.schema.json"
+          },
+          "durationMs": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Optional auto-expiry for this fault."
+          }
+        },
+        "additionalProperties": false
+      },
+      "description": "List of faults to inject for this scenario."
+    },
+    "expectedBehavior": {
+      "type": "string",
+      "description": "What the system should do under these faults."
+    },
+    "assertions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Human-readable assertions to verify."
+    }
+  },
+  "additionalProperties": false
+}

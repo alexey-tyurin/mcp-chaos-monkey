@@ -205,7 +205,7 @@ All `CHAOS_ENABLED` guards stay identical.
 
 ## Part 3: Python Implementation — Placeholder (`python/`)
 
-> **Status: Placeholder.** This section will be elaborated after Part 1 (TypeScript) is complete. The goal is to provide an equivalent chaos/fault injection framework for Python MCP projects, sharing the same concepts, fault types, and API shape as the TypeScript version.
+> **Status: COMPLETE.** Full Python implementation with 12 source modules, 54 tests (all passing), CI/CD workflows, shared JSON schemas, and comprehensive README.
 
 ### 3.1 — Planned structure
 
@@ -304,6 +304,6 @@ These must be consistent between both implementations:
 - [x] Decide on FaultConfig representation → **`dataclass`** with `FaultType(StrEnum)` discriminator
 - [x] Design async-first controller → **Sync controller** (thread-safe with `threading.Lock`), async interceptors use it directly
 - [x] Determine if admin endpoint should use FastAPI or be framework-agnostic → **Framework-agnostic** handler functions + optional `create_starlette_routes()` factory
-- [ ] Write Python-specific README with MCP Python SDK examples
-- [ ] Set up CI/CD for PyPI publishing
-- [ ] Consider shared JSON schema for fault configs (cross-language validation)
+- [x] Write Python-specific README with MCP Python SDK examples → `python/README.md` — full API reference, architecture diagram, MCP SDK integration examples, cross-language compatibility section
+- [x] Set up CI/CD for PyPI publishing → `.github/workflows/python-ci.yml` (test on 3.11/3.12/3.13, lint, type check) + `.github/workflows/python-publish.yml` (trusted publishing on `python-v*` release tags)
+- [x] Consider shared JSON schema for fault configs (cross-language validation) → `schema/fault-config.schema.json`, `schema/inject-request.schema.json`, `schema/scenario.schema.json` — JSON Schema 2020-12, validates both camelCase (TS) and is the canonical reference for the 8 fault types

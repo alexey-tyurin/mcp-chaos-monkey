@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/alexey-tyurin/mcp-chaos-monkey/schema/inject-request.schema.json",
+  "title": "InjectRequest",
+  "description": "Request body for POST /chaos/inject — shared across TypeScript and Python implementations.",
+  "type": "object",
+  "required": ["target", "config"],
+  "properties": {
+    "target": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Fault target name (e.g. 'weather-api', 'redis', 'oauth-token')."
+    },
+    "config": {
+      "$ref": "fault-config.schema.json",
+      "description": "Fault configuration."
+    },
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Optional auto-expiry duration in milliseconds."
+    }
+  },
+  "additionalProperties": false
+}
