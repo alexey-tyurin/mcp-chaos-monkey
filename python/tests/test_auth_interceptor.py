@@ -6,7 +6,7 @@ from typing import Any, Callable
 import pytest
 
 from mcp_chaos_monkey.controller import ChaosController
-from mcp_chaos_monkey.fault_types import ErrorFault, LatencyFault
+from mcp_chaos_monkey.fault_types import ErrorFault, LatencyFault, TimeoutFault
 from mcp_chaos_monkey.interceptors.auth_interceptor import (
     ChaosAuthMiddleware,
     create_chaos_auth_middleware,
@@ -93,6 +93,17 @@ async def test_create_chaos_auth_middleware_factory() -> None:
     middleware = factory(_dummy_app)
     status, _ = await _call_middleware(middleware)
     assert status == 401
+
+
+@pytest.mark.asyncio
+async def test_timeout_fault_sends_504() -> None:
+    """Fix #12: timeout fault should eventually send a 504 response, not hang forever."""
+    controller = ChaosController.get_instance()
+    controller.inject("oauth-token", TimeoutFault(hang_ms=10))
+    middleware = ChaosAuthMiddleware(_dummy_app)
+    status, data = await _call_middleware(middleware)
+    assert status == 504
+    assert "Gateway Timeout" in data["error"]
 
 
 @pytest.mark.asyncio

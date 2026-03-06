@@ -88,24 +88,24 @@ class ChaosController:
         now = time.time() * 1000
         with self._lock:
             expired: list[str] = []
+            matched_config: FaultConfig | None = None
             for fault_id, fault in self._faults.items():
                 if fault.target != target:
                     continue
                 if fault.expires_at is not None and now > fault.expires_at:
                     expired.append(fault_id)
                     continue
-                if (
-                    fault.config.probability is not None
-                    and random.random() > fault.config.probability
-                ):
-                    continue
-                fault.request_count += 1
-                for eid in expired:
-                    self._faults.pop(eid, None)
-                return fault.config
+                if matched_config is None:
+                    if (
+                        fault.config.probability is not None
+                        and random.random() > fault.config.probability
+                    ):
+                        continue
+                    fault.request_count += 1
+                    matched_config = fault.config
             for eid in expired:
                 self._faults.pop(eid, None)
-        return None
+        return matched_config
 
     def get_active_faults(self) -> list[ActiveFaultInfo]:
         with self._lock:

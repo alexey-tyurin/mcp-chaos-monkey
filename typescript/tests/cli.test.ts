@@ -92,4 +92,29 @@ describe('runCli', () => {
     runCli(['inject', 'weather-api', 'error', '--status', '503', '--duration', '30']);
     expect(stdoutOutput).toContain('Injected fault:');
   });
+
+  it('schema-mismatch with no --fields produces empty array, not [""]', () => {
+    runCli(['inject', 'weather-api', 'schema-mismatch']);
+    expect(stdoutOutput).toContain('Injected fault:');
+
+    const controller = ChaosController.getInstance();
+    const fault = controller.getFault('weather-api');
+    expect(fault).not.toBeNull();
+    expect(fault!.type).toBe('schema-mismatch');
+    if (fault!.type === 'schema-mismatch') {
+      expect(fault!.missingFields).toEqual([]);
+    }
+  });
+
+  it('--duration 0 creates an immediately-expiring fault', () => {
+    vi.useFakeTimers();
+    runCli(['inject', 'weather-api', 'error', '--status', '503', '--duration', '0']);
+    expect(stdoutOutput).toContain('Injected fault:');
+
+    // Advance past 0ms to trigger expiry
+    vi.advanceTimersByTime(1);
+    const controller = ChaosController.getInstance();
+    expect(controller.getFault('weather-api')).toBeNull();
+    vi.useRealTimers();
+  });
 });

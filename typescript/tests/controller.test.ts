@@ -117,6 +117,29 @@ describe('ChaosController', () => {
     });
   });
 
+  describe('probability validation', () => {
+    it('rejects probability > 1 (Fix #10)', () => {
+      const controller = ChaosController.getInstance();
+      expect(() =>
+        controller.inject('weather-api', { type: 'error', statusCode: 503, probability: 2.0 }),
+      ).toThrow('probability must be between 0 and 1');
+    });
+
+    it('rejects probability < 0 (Fix #10)', () => {
+      const controller = ChaosController.getInstance();
+      expect(() =>
+        controller.inject('weather-api', { type: 'error', statusCode: 503, probability: -0.5 }),
+      ).toThrow('probability must be between 0 and 1');
+    });
+
+    it('accepts probability within [0, 1]', () => {
+      const controller = ChaosController.getInstance();
+      expect(() =>
+        controller.inject('weather-api', { type: 'error', statusCode: 503, probability: 0.5 }),
+      ).not.toThrow();
+    });
+  });
+
   describe('reset for isolation', () => {
     it('clears the singleton instance', () => {
       const a = ChaosController.getInstance();

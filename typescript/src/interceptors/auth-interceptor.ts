@@ -41,7 +41,10 @@ function applyAuthFault(target: FaultTarget, res: Response, next: NextFunction):
       setTimeout(() => { next(); }, fault.delayMs);
       return;
     case 'timeout':
-      // Don't respond — let the request hang until client timeout
+      // Hang for the specified duration then send 504 to avoid leaking connections
+      setTimeout(() => {
+        res.status(504).json({ error: 'Gateway Timeout (chaos)' });
+      }, fault.hangMs);
       return;
     default:
       next();

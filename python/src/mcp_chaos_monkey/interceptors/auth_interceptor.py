@@ -60,8 +60,21 @@ class ChaosAuthMiddleware:
                 await asyncio.sleep(fault.delay_ms / 1000)  # type: ignore[union-attr]
                 await self.app(scope, receive, send)
             case "timeout":
-                # Don't respond — let the request hang
+                # Hang for the specified duration then send 504 to avoid leaking connections
                 await asyncio.sleep(fault.hang_ms / 1000)  # type: ignore[union-attr]
+                timeout_body = json.dumps({"error": "Gateway Timeout (chaos)"}).encode()
+                await send({
+                    "type": "http.response.start",
+                    "status": 504,
+                    "headers": [
+                        [b"content-type", b"application/json"],
+                        [b"content-length", str(len(timeout_body)).encode()],
+                    ],
+                })
+                await send({
+                    "type": "http.response.body",
+                    "body": timeout_body,
+                })
             case _:
                 await self.app(scope, receive, send)
 

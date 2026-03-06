@@ -76,10 +76,14 @@ async function applyFault(
       });
     }
     case 'connection-drop': {
-      const abortController = new AbortController();
-      const mergedInit = { ...init, signal: abortController.signal };
+      const chaosAbort = new AbortController();
+      const existingSignal = init?.signal;
+      const combinedSignal = existingSignal
+        ? AbortSignal.any([chaosAbort.signal, existingSignal])
+        : chaosAbort.signal;
+      const mergedInit = { ...init, signal: combinedSignal };
       const fetchPromise = originalFetch(input, mergedInit);
-      setTimeout(() => { abortController.abort(); }, 50);
+      setTimeout(() => { chaosAbort.abort(); }, 50);
       return fetchPromise;
     }
   }

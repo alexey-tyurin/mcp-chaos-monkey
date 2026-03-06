@@ -28,6 +28,9 @@ export class ChaosController {
   }
 
   inject(target: FaultTarget, config: FaultConfig, durationMs?: number): string {
+    if (config.probability !== undefined && (config.probability < 0 || config.probability > 1)) {
+      throw new Error(`probability must be between 0 and 1, got ${String(config.probability)}`);
+    }
     const id = `${target}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.faults.set(id, {
       target,

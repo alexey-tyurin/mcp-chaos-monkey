@@ -12,6 +12,7 @@ from mcp_chaos_monkey.fault_types import (
     LatencyFault,
     MalformedFault,
     RateLimitFault,
+    SchemaMismatchFault,
     TimeoutFault,
 )
 from mcp_chaos_monkey.interceptors.http_interceptor import (
@@ -117,3 +118,29 @@ async def test_create_chaos_aware_client_wraps_existing() -> None:
     controller.inject("wrap-test", ErrorFault(status_code=418))
     resp = await wrapped.get("http://example.com/test")
     assert resp.status_code == 418
+
+
+class _HtmlTransport(httpx.AsyncBaseTransport):
+    """Test transport that returns non-JSON HTML."""
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            status_code=500,
+            content=b"<html><body>Error</body></html>",
+            headers={"Content-Type": "text/html"},
+            request=request,
+        )
+
+
+@pytest.mark.asyncio
+async def test_schema_mismatch_non_json_response() -> None:
+    """Fix #6: schema-mismatch on non-JSON response should not crash with JSONDecodeError."""
+    controller = ChaosController.get_instance()
+    controller.inject("html-api", SchemaMismatchFault(missing_fields=["foo"]))
+    html_transport = _HtmlTransport()
+    chaos = _ChaosAsyncTransport("html-api", html_transport)
+    client = httpx.AsyncClient(transport=chaos)
+    resp = await client.get("http://example.com/test")
+    # Should return the original response as-is instead of crashing
+    assert resp.status_code == 500
+    assert b"<html>" in resp.content

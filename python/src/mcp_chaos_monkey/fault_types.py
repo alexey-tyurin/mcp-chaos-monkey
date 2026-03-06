@@ -136,6 +136,9 @@ def parse_fault_config(data: dict[str, Any]) -> FaultConfig:
             kwargs[mapped] = value
 
     if "probability" in data and data["probability"] is not None:
-        kwargs["probability"] = float(data["probability"])
+        prob = float(data["probability"])
+        if not (0.0 <= prob <= 1.0):
+            raise ValueError(f"probability must be between 0 and 1, got {prob}")
+        kwargs["probability"] = prob
 
     return cls(**kwargs)  # type: ignore[call-arg]

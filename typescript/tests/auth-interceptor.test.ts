@@ -87,14 +87,26 @@ describe('chaosAuthMiddleware', () => {
   });
 
   describe('timeout fault', () => {
-    it('does not respond or call next (hangs)', () => {
+    it('sends 504 after hangMs delay (Fix #11)', async () => {
+      vi.useFakeTimers();
       const { req, res, next } = createMockReqRes();
       controller.inject('oauth-token', { type: 'timeout', hangMs: 30000 });
 
       chaosAuthMiddleware(req, res, next);
 
+      // Should not respond immediately
       expect(next).not.toHaveBeenCalled();
       expect(res.status).not.toHaveBeenCalled();
+
+      // After hangMs, should send 504
+      await vi.advanceTimersByTimeAsync(30100);
+      expect(res.status).toHaveBeenCalledWith(504);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.stringContaining('Gateway Timeout') }),
+      );
+      expect(next).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
     });
   });
 

@@ -90,7 +90,7 @@ def run_cli(argv: list[str] | None = None) -> None:
     match args.command:
         case "inject":
             config = _build_fault_config(args)
-            duration_ms = args.duration * 1000 if args.duration else None
+            duration_ms = args.duration * 1000 if args.duration is not None else None
             controller = ChaosController.get_instance()
             fault_id = controller.inject(args.target, config, duration_ms)
             print(f"Injected fault: {fault_id}")

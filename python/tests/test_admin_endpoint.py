@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import pytest
+
 from mcp_chaos_monkey.admin_endpoint import (
+    _check_admin_auth,
     handle_clear,
     handle_clear_all,
     handle_inject,
@@ -74,3 +77,41 @@ def test_inject_camel_case_keys() -> None:
         "config": {"type": "latency", "delayMs": 200},
     })
     assert "fault_id" in result
+
+
+def test_handle_inject_missing_target() -> None:
+    """Fix #7: Missing target should raise ValueError, not KeyError."""
+    with pytest.raises(ValueError, match="target"):
+        handle_inject({"config": {"type": "error", "status_code": 500}})
+
+
+def test_handle_inject_missing_config() -> None:
+    """Fix #7: Missing config should raise ValueError."""
+    with pytest.raises(ValueError, match="config.type"):
+        handle_inject({"target": "api"})
+
+
+def test_handle_inject_invalid_fault_type() -> None:
+    """Fix #7: Invalid fault type in config should raise ValueError."""
+    with pytest.raises(ValueError, match="config.type"):
+        handle_inject({"target": "api", "config": {"type": "bogus"}})
+
+
+def test_handle_clear_missing_fault_id() -> None:
+    """Fix #7: Missing fault_id should raise ValueError."""
+    with pytest.raises(ValueError, match="fault_id"):
+        handle_clear({})
+
+
+def test_admin_auth_no_token_required() -> None:
+    """Fix #4: When CHAOS_ADMIN_TOKEN is not set, auth always passes."""
+    assert _check_admin_auth() is None
+    assert _check_admin_auth({"authorization": "Bearer whatever"}) is None
+
+
+def test_admin_auth_token_required(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fix #4: When CHAOS_ADMIN_TOKEN is set, auth is enforced."""
+    monkeypatch.setenv("CHAOS_ADMIN_TOKEN", "secret123")
+    assert _check_admin_auth() is not None
+    assert _check_admin_auth({"authorization": "Bearer wrong"}) is not None
+    assert _check_admin_auth({"authorization": "Bearer secret123"}) is None

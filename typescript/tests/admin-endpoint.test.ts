@@ -13,11 +13,11 @@ function createMockApp() {
       routes.set(`POST ${path}`, handler);
     }),
     routes,
-    invoke(method: string, path: string, body?: unknown) {
+    invoke(method: string, path: string, body?: unknown, headers?: Record<string, string>) {
       const handler = routes.get(`${method} ${path}`);
       if (!handler) throw new Error(`No route: ${method} ${path}`);
 
-      const req = { body } as unknown;
+      const req = { body, headers: headers ?? {} } as unknown;
       const res = {
         json: vi.fn().mockReturnThis(),
         status: vi.fn().mockReturnThis(),
@@ -32,10 +32,12 @@ describe('registerChaosEndpoint', () => {
   beforeEach(() => {
     process.env['CHAOS_ENABLED'] = 'true';
     process.env['NODE_ENV'] = 'test';
+    delete process.env['CHAOS_ADMIN_TOKEN'];
     ChaosController.reset();
   });
 
   afterEach(() => {
+    delete process.env['CHAOS_ADMIN_TOKEN'];
     ChaosController.reset();
   });
 
@@ -92,5 +94,66 @@ describe('registerChaosEndpoint', () => {
     const res = app.invoke('POST', '/chaos/clear-all');
     expect(res.json).toHaveBeenCalledWith({ cleared: 'all' });
     expect(controller.getActiveFaults()).toHaveLength(0);
+  });
+
+  it('rejects inject with missing target (Fix #5)', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/inject', {
+      config: { type: 'error', statusCode: 503 },
+    });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('target') }),
+    );
+  });
+
+  it('rejects inject with invalid config.type (Fix #5)', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/inject', {
+      target: 'api',
+      config: { type: 'bogus' },
+    });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('config.type') }),
+    );
+  });
+
+  it('rejects clear with missing faultId (Fix #5)', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/clear', {});
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('faultId') }),
+    );
+  });
+
+  it('blocks requests when CHAOS_ADMIN_TOKEN is set and no auth provided (Fix #4)', () => {
+    process.env['CHAOS_ADMIN_TOKEN'] = 'secret123';
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('GET', '/chaos/status');
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('CHAOS_ADMIN_TOKEN') }),
+    );
+  });
+
+  it('allows requests with correct CHAOS_ADMIN_TOKEN (Fix #4)', () => {
+    process.env['CHAOS_ADMIN_TOKEN'] = 'secret123';
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('GET', '/chaos/status', undefined, {
+      authorization: 'Bearer secret123',
+    });
+    expect(res.json).toHaveBeenCalledWith({ faults: [] });
   });
 });

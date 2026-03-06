@@ -93,3 +93,27 @@ def test_reset() -> None:
     _ = ChaosController.get_instance()
     ChaosController.reset()
     assert ChaosController._instance is None
+
+
+def test_get_fault_cleans_expired_without_dict_mutation_error() -> None:
+    """Fix #8: expired faults should be cleaned up safely (no dict mutation during iteration)."""
+    controller = ChaosController.get_instance()
+    # Inject an expired fault and an active fault for the same target
+    controller.inject("target", LatencyFault(delay_ms=10), duration_ms=1)
+    controller.inject("target", ErrorFault(status_code=503))
+    time.sleep(0.01)
+    # Should not raise RuntimeError from dict mutation during iteration
+    result = controller.get_fault("target")
+    assert result is not None
+    assert result.type == "error"
+
+
+def test_probability_out_of_range_rejected() -> None:
+    """Fix #10: probability outside [0,1] should be rejected."""
+    from mcp_chaos_monkey.fault_types import parse_fault_config
+
+    with pytest.raises(ValueError, match="probability must be between 0 and 1"):
+        parse_fault_config({"type": "error", "status_code": 500, "probability": 2.0})
+
+    with pytest.raises(ValueError, match="probability must be between 0 and 1"):
+        parse_fault_config({"type": "error", "status_code": 500, "probability": -0.5})

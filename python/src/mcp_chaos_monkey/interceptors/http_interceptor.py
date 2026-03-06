@@ -50,8 +50,6 @@ class _ChaosSyncTransport(httpx.BaseTransport if httpx else object):  # type: ig
         self._transport = transport
 
     def handle_request(self, request: Any) -> Any:
-        import time
-
         controller = ChaosController.get_instance()
         fault = controller.get_fault(self._target)
 
@@ -98,7 +96,11 @@ async def _apply_async_fault(fault: FaultConfig, request: Any, transport: Any) -
             )
         case "schema-mismatch":
             response = await transport.handle_async_request(request)
-            body = json.loads(response.content)
+            try:
+                body = json.loads(response.content)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                logger.warning("schema-mismatch: upstream response is not valid JSON, returning as-is")
+                return response
             for field in fault.missing_fields:  # type: ignore[union-attr]
                 body.pop(field, None)
             return httpx.Response(
@@ -153,7 +155,11 @@ def _apply_sync_fault(fault: FaultConfig, request: Any, transport: Any) -> Any:
             )
         case "schema-mismatch":
             response = transport.handle_request(request)
-            body = json.loads(response.content)
+            try:
+                body = json.loads(response.content)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                logger.warning("schema-mismatch: upstream response is not valid JSON, returning as-is")
+                return response
             for field in fault.missing_fields:  # type: ignore[union-attr]
                 body.pop(field, None)
             return httpx.Response(

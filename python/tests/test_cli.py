@@ -63,3 +63,17 @@ def test_no_command_shows_help(capsys: pytest.CaptureFixture[str]) -> None:
     run_cli([])
     captured = capsys.readouterr()
     assert "usage:" in captured.out.lower() or "mcp-chaos" in captured.out.lower()
+
+
+def test_inject_with_duration_zero(capsys: pytest.CaptureFixture[str]) -> None:
+    """Fix #1: --duration 0 should create a fault that expires immediately, not a permanent one."""
+    import time
+
+    run_cli(["inject", "api", "error", "--status", "503", "--duration", "0"])
+    captured = capsys.readouterr()
+    assert "Injected fault:" in captured.out
+
+    # The fault should expire immediately (duration_ms=0)
+    time.sleep(0.01)
+    controller = ChaosController.get_instance()
+    assert controller.get_fault("api") is None

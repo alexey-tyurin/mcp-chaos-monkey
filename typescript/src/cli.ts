@@ -54,7 +54,8 @@ function buildFaultConfig(faultType: string, flags: Map<string, string>): FaultC
     case 'rate-limit':
       return { type: 'rate-limit', retryAfterSeconds: Number(flags.get('retry-after') ?? '60') };
     case 'schema-mismatch':
-      return { type: 'schema-mismatch', missingFields: (flags.get('fields') ?? '').split(',') };
+      const rawFields = flags.get('fields') ?? '';
+      return { type: 'schema-mismatch', missingFields: rawFields ? rawFields.split(',') : [] };
     default:
       throw new Error(`Unknown fault type: ${faultType}`);
   }
@@ -97,7 +98,7 @@ export function runCli(argv: string[]): void {
 
       const config = buildFaultConfig(faultType, flags);
       const durationStr = flags.get('duration');
-      const durationMs = durationStr ? Number(durationStr) * 1000 : undefined;
+      const durationMs = durationStr !== undefined ? Number(durationStr) * 1000 : undefined;
 
       const controller = ChaosController.getInstance();
       const faultId = controller.inject(target, config, durationMs);
@@ -139,8 +140,12 @@ export function runCli(argv: string[]): void {
   }
 }
 
-// Direct execution
-const cliArgs = process.argv.slice(2);
-if (cliArgs.length > 0) {
-  runCli(cliArgs);
+// Direct execution — only when this file is the entry point
+const isDirectExecution =
+  typeof process !== 'undefined' &&
+  process.argv[1] !== undefined &&
+  import.meta.url === `file://${process.argv[1]}`;
+
+if (isDirectExecution) {
+  runCli(process.argv.slice(2));
 }
