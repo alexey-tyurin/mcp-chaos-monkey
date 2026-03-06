@@ -238,18 +238,20 @@ python/
   README.md
 ```
 
-### 3.2 — Key design decisions (to be finalized)
+### 3.2 — Key design decisions (FINALIZED)
 
-| Decision | Options | Notes |
+| Decision | Choice | Rationale |
 |---|---|---|
 | Package name on PyPI | `mcp-chaos-monkey` | Match npm name |
 | Python version | `>=3.11` | For `StrEnum`, `TypedDict`, modern typing |
-| HTTP interceptor target | `httpx` vs `aiohttp` vs `requests` | Likely `httpx` (sync+async) as primary, others as optional |
-| Redis interceptor target | `redis-py` vs `aioredis` | `redis-py` (has async support built-in since v4.2) |
-| Web framework for admin | `FastAPI` vs `Flask` vs framework-agnostic | Likely FastAPI (async-native, type-safe) |
-| Type safety | `TypedDict` vs `dataclass` vs `pydantic` for FaultConfig | `dataclass` for zero deps, `pydantic` as optional |
-| Testing framework | `pytest` | Standard |
-| Async support | Native `asyncio` | Python MCP SDK is async |
+| HTTP interceptor target | **`httpx`** | Sync+async, closest to TS fetch API pattern. Optional dep: `pip install mcp-chaos-monkey[httpx]` |
+| Redis interceptor target | **`redis-py`** (`redis>=5.0.0`) | Built-in async since v4.2, standard. Optional dep: `pip install mcp-chaos-monkey[redis]` |
+| Web framework for admin | **Framework-agnostic** + optional Starlette router | Core provides raw handler functions returning dicts. `create_starlette_routes()` factory for ASGI apps. Optional dep: `pip install mcp-chaos-monkey[starlette]` |
+| Type safety | **`dataclass`** for FaultConfig | Zero deps, discriminated via `type: str` field. `StrEnum` for fault type names. No pydantic needed. |
+| Testing framework | **`pytest`** + `pytest-asyncio` | Standard |
+| Async support | **Native `asyncio`** | MCP Python SDK is async-first. Controller is sync (thread-safe). Interceptors provide async variants. |
+| CLI | **`argparse`** (stdlib) | Zero deps, mirrors TS's hand-rolled parser |
+| Zero runtime deps | **Yes** — core uses only stdlib | Interceptors import optional deps at call time with clear `ImportError` messages |
 
 ### 3.3 — API shape (draft, mirrors TypeScript)
 
@@ -298,10 +300,10 @@ These must be consistent between both implementations:
 
 ### 3.5 — TODO (to be elaborated)
 
-- [ ] Finalize Python HTTP interceptor approach (httpx transport hooks vs monkey-patching)
-- [ ] Decide on FaultConfig representation (dataclass vs TypedDict vs pydantic)
-- [ ] Design async-first controller (Python MCP SDK is async)
-- [ ] Determine if admin endpoint should use FastAPI or be framework-agnostic
+- [x] Finalize Python HTTP interceptor approach → **httpx**: wrap `AsyncClient`/`Client` by replacing `_transport` with a chaos-aware transport
+- [x] Decide on FaultConfig representation → **`dataclass`** with `FaultType(StrEnum)` discriminator
+- [x] Design async-first controller → **Sync controller** (thread-safe with `threading.Lock`), async interceptors use it directly
+- [x] Determine if admin endpoint should use FastAPI or be framework-agnostic → **Framework-agnostic** handler functions + optional `create_starlette_routes()` factory
 - [ ] Write Python-specific README with MCP Python SDK examples
 - [ ] Set up CI/CD for PyPI publishing
 - [ ] Consider shared JSON schema for fault configs (cross-language validation)
