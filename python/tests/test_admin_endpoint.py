@@ -115,3 +115,23 @@ def test_admin_auth_token_required(monkeypatch: pytest.MonkeyPatch) -> None:
     assert _check_admin_auth() is not None
     assert _check_admin_auth({"authorization": "Bearer wrong"}) is not None
     assert _check_admin_auth({"authorization": "Bearer secret123"}) is None
+
+
+def test_admin_auth_uses_timing_safe_comparison(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fix #4: Auth should use hmac.compare_digest for timing-safe comparison."""
+    import hmac
+    from unittest.mock import patch as mock_patch
+
+    monkeypatch.setenv("CHAOS_ADMIN_TOKEN", "secret123")
+    with mock_patch("mcp_chaos_monkey.admin_endpoint.hmac.compare_digest", wraps=hmac.compare_digest) as mock_cmp:
+        _check_admin_auth({"authorization": "Bearer secret123"})
+        mock_cmp.assert_called_once()
+
+
+def test_handle_inject_unknown_config_fields() -> None:
+    """Fix #12: Unknown fields in fault config should raise ValueError."""
+    with pytest.raises(ValueError, match="Unknown field"):
+        handle_inject({
+            "target": "api",
+            "config": {"type": "latency", "delayMS": 500},  # typo: delayMS vs delay_ms
+        })

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import os
 from dataclasses import asdict
 from typing import Any
@@ -25,7 +26,7 @@ def _check_admin_auth(headers: dict[str, str] | None = None) -> str | None:
     if headers is None:
         return "Invalid or missing CHAOS_ADMIN_TOKEN"
     provided = headers.get("authorization", "").removeprefix("Bearer ")
-    if provided != required_token:
+    if not hmac.compare_digest(provided, required_token):
         return "Invalid or missing CHAOS_ADMIN_TOKEN"
     return None
 

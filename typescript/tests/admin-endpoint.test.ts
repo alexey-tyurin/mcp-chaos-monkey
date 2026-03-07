@@ -156,4 +156,57 @@ describe('registerChaosEndpoint', () => {
     });
     expect(res.json).toHaveBeenCalledWith({ faults: [] });
   });
+
+  it('uses prefix-based Bearer stripping (Fix #6)', () => {
+    process.env['CHAOS_ADMIN_TOKEN'] = 'Bearer extra';
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    // Token itself contains "Bearer " — only the prefix should be stripped
+    const res = app.invoke('GET', '/chaos/status', undefined, {
+      authorization: 'Bearer Bearer extra',
+    });
+    expect(res.json).toHaveBeenCalledWith({ faults: [] });
+  });
+
+  it('rejects inject with missing required numeric field (Fix #7)', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/inject', {
+      target: 'api',
+      config: { type: 'latency' },  // missing delayMs
+    });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('delayMs') }),
+    );
+  });
+
+  it('rejects inject with non-numeric required field (Fix #7)', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/inject', {
+      target: 'api',
+      config: { type: 'error', statusCode: 'not-a-number' },
+    });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('statusCode') }),
+    );
+  });
+
+  it('accepts valid config with all required fields (Fix #7)', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/inject', {
+      target: 'api',
+      config: { type: 'latency', delayMs: 500 },
+    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ faultId: expect.any(String) }),
+    );
+  });
 });

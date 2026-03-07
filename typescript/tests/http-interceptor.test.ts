@@ -151,6 +151,50 @@ describe('createChaosAwareFetch', () => {
       expect(body['humidity']).toBeUndefined();
       expect(mockFetch).toHaveBeenCalledOnce();
     });
+
+    it('returns original response when upstream is not JSON (Fix #1)', async () => {
+      const mockFetch = vi.fn(async () =>
+        new Response('<html>Error</html>', {
+          status: 500,
+          headers: { 'Content-Type': 'text/html' },
+        }),
+      );
+      const chaosAwareFetch = createChaosAwareFetch('html-api', mockFetch);
+
+      controller.inject('html-api', {
+        type: 'schema-mismatch',
+        missingFields: ['foo'],
+      });
+
+      const response = await chaosAwareFetch('http://example.com');
+      expect(response.status).toBe(500);
+      const text = await response.text();
+      expect(text).toContain('<html>');
+    });
+
+    it('does not pass through stale Content-Length after field removal (Fix #2)', async () => {
+      const original = { city: 'NYC', temperature: 72, humidity: 45 };
+      const originalBody = JSON.stringify(original);
+      const mockFetch = vi.fn(async () =>
+        new Response(originalBody, {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': String(originalBody.length),
+          },
+        }),
+      );
+      const chaosAwareFetch = createChaosAwareFetch('weather-api', mockFetch);
+
+      controller.inject('weather-api', {
+        type: 'schema-mismatch',
+        missingFields: ['temperature', 'humidity'],
+      });
+
+      const response = await chaosAwareFetch('http://example.com');
+      // Content-Length should not be the old value
+      expect(response.headers.get('content-length')).toBeNull();
+    });
   });
 
   describe('connection-drop fault', () => {

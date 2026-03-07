@@ -66,13 +66,21 @@ async function applyFault(
     }
     case 'schema-mismatch': {
       const realResponse = await originalFetch(input, init);
-      const body = await realResponse.json() as Record<string, unknown>;
+      let body: Record<string, unknown>;
+      try {
+        body = await realResponse.clone().json() as Record<string, unknown>;
+      } catch {
+        logger.warn({ target: input }, 'schema-mismatch: upstream response is not valid JSON, returning as-is');
+        return realResponse;
+      }
       for (const field of fault.missingFields) {
         Reflect.deleteProperty(body, field);
       }
+      const headers = new Headers(realResponse.headers);
+      headers.delete('content-length');
       return new Response(JSON.stringify(body), {
         status: realResponse.status,
-        headers: realResponse.headers,
+        headers,
       });
     }
     case 'connection-drop': {

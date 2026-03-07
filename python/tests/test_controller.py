@@ -95,6 +95,18 @@ def test_reset() -> None:
     assert ChaosController._instance is None
 
 
+def test_get_active_faults_filters_expired() -> None:
+    """Fix #3: get_active_faults should not return expired faults."""
+    controller = ChaosController.get_instance()
+    controller.inject("active-target", ErrorFault(status_code=500))
+    controller.inject("expired-target", LatencyFault(delay_ms=10), duration_ms=1)
+    time.sleep(0.01)
+    faults = controller.get_active_faults()
+    targets = {f.target for f in faults}
+    assert "active-target" in targets
+    assert "expired-target" not in targets
+
+
 def test_get_fault_cleans_expired_without_dict_mutation_error() -> None:
     """Fix #8: expired faults should be cleaned up safely (no dict mutation during iteration)."""
     controller = ChaosController.get_instance()

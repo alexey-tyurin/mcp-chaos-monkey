@@ -128,12 +128,19 @@ def parse_fault_config(data: dict[str, Any]) -> FaultConfig:
         raise ValueError(f"Unknown fault type: {fault_type}")
 
     kwargs: dict[str, Any] = {}
+    unknown_keys: list[str] = []
     for key, value in data.items():
         if key in ("type", "probability"):
             continue
         mapped = _FIELD_MAP.get(key)
         if mapped is not None:
             kwargs[mapped] = value
+        else:
+            unknown_keys.append(key)
+    if unknown_keys:
+        raise ValueError(
+            f"Unknown field(s) for fault type '{fault_type}': {', '.join(unknown_keys)}"
+        )
 
     if "probability" in data and data["probability"] is not None:
         prob = float(data["probability"])

@@ -108,16 +108,25 @@ class ChaosController:
         return matched_config
 
     def get_active_faults(self) -> list[ActiveFaultInfo]:
+        now = time.time() * 1000
         with self._lock:
-            return [
-                ActiveFaultInfo(
-                    id=fault_id,
-                    target=fault.target,
-                    type=fault.config.type,
-                    request_count=fault.request_count,
+            expired: list[str] = []
+            result: list[ActiveFaultInfo] = []
+            for fault_id, fault in self._faults.items():
+                if fault.expires_at is not None and now > fault.expires_at:
+                    expired.append(fault_id)
+                    continue
+                result.append(
+                    ActiveFaultInfo(
+                        id=fault_id,
+                        target=fault.target,
+                        type=fault.config.type,
+                        request_count=fault.request_count,
+                    )
                 )
-                for fault_id, fault in self._faults.items()
-            ]
+            for eid in expired:
+                self._faults.pop(eid, None)
+            return result
 
     @classmethod
     def reset(cls) -> None:

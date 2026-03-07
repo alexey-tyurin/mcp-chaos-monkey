@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'node:crypto';
 import type { Express, Request, Response } from 'express';
 import { assertChaosAllowed } from './guard.js';
 import { ChaosController } from './controller.js';
@@ -15,8 +16,10 @@ const VALID_FAULT_TYPES = new Set([
 function checkAdminAuth(req: Request, res: Response): boolean {
   const requiredToken = process.env['CHAOS_ADMIN_TOKEN'];
   if (!requiredToken) return true;
-  const provided = req.headers['authorization']?.replace('Bearer ', '');
-  if (provided !== requiredToken) {
+  const provided = req.headers['authorization']?.replace(/^Bearer /, '') ?? '';
+  const a = Buffer.from(provided);
+  const b = Buffer.from(requiredToken);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
     res.status(403).json({ error: 'Invalid or missing CHAOS_ADMIN_TOKEN' });
     return false;
   }
@@ -27,6 +30,26 @@ interface InjectBody {
   target: string;
   config: { type: string; [key: string]: unknown };
   durationMs?: number;
+}
+
+const REQUIRED_NUMBER_FIELDS: Record<string, string[]> = {
+  'latency': ['delayMs'],
+  'error': ['statusCode'],
+  'timeout': ['hangMs'],
+  'rate-limit': ['retryAfterSeconds'],
+};
+
+function validateFaultConfig(config: { type: string; [key: string]: unknown }): string | null {
+  const requiredFields = REQUIRED_NUMBER_FIELDS[config.type];
+  if (requiredFields) {
+    for (const field of requiredFields) {
+      const val = config[field];
+      if (val === undefined || typeof val !== 'number' || !Number.isFinite(val)) {
+        return `config.${field} must be a finite number for fault type '${config.type}'`;
+      }
+    }
+  }
+  return null;
 }
 
 export function registerChaosEndpoint(app: Express): void {
@@ -55,6 +78,11 @@ export function registerChaosEndpoint(app: Express): void {
       }
       if (!body.config || typeof body.config !== 'object' || !VALID_FAULT_TYPES.has(body.config.type)) {
         res.status(400).json({ error: `Missing or invalid field: config.type (must be one of: ${[...VALID_FAULT_TYPES].join(', ')})` });
+        return;
+      }
+      const validationError = validateFaultConfig(body.config);
+      if (validationError) {
+        res.status(400).json({ error: validationError });
         return;
       }
       const controller = ChaosController.getInstance();

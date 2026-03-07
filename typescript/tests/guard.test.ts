@@ -61,4 +61,22 @@ describe('assertChaosAllowed', () => {
 
     expect(() => assertChaosAllowed()).not.toThrow();
   });
+
+  it('blocks when NODE_ENV is "Production" (case-insensitive, Fix #5)', () => {
+    process.env['NODE_ENV'] = 'Production';
+    process.env['CHAOS_ENABLED'] = 'true';
+
+    expect(() => assertChaosAllowed()).toThrow(
+      'FATAL: Chaos framework must never run in production',
+    );
+  });
+
+  it('blocks when NODE_ENV is "PRODUCTION" (case-insensitive, Fix #5)', () => {
+    process.env['NODE_ENV'] = 'PRODUCTION';
+    process.env['CHAOS_ENABLED'] = 'true';
+
+    expect(() => assertChaosAllowed()).toThrow(
+      'FATAL: Chaos framework must never run in production',
+    );
+  });
 });

@@ -68,7 +68,16 @@ export class ChaosController {
       }
 
       fault.requestCount++;
-      return fault.config;
+      // Continue iterating to clean up any remaining expired faults for this target
+      const config = fault.config;
+      for (const [remainingId, remainingFault] of this.faults) {
+        if (remainingId === id) continue;
+        if (remainingFault.target !== target) continue;
+        if (remainingFault.expiresAt !== null && Date.now() > remainingFault.expiresAt) {
+          this.faults.delete(remainingId);
+        }
+      }
+      return config;
     }
     return null;
   }
@@ -79,12 +88,21 @@ export class ChaosController {
     type: string;
     requestCount: number;
   }[] {
-    return Array.from(this.faults.entries()).map(([id, f]) => ({
-      id,
-      target: f.target,
-      type: f.config.type,
-      requestCount: f.requestCount,
-    }));
+    const now = Date.now();
+    const result: { id: string; target: FaultTarget; type: string; requestCount: number }[] = [];
+    for (const [id, f] of this.faults) {
+      if (f.expiresAt !== null && now > f.expiresAt) {
+        this.faults.delete(id);
+        continue;
+      }
+      result.push({
+        id,
+        target: f.target,
+        type: f.config.type,
+        requestCount: f.requestCount,
+      });
+    }
+    return result;
   }
 
   static reset(): void {

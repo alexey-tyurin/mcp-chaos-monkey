@@ -140,6 +140,43 @@ describe('ChaosController', () => {
     });
   });
 
+  describe('expired faults filtered from getActiveFaults (Fix #3)', () => {
+    it('does not return expired faults in getActiveFaults', () => {
+      vi.useFakeTimers();
+      const controller = ChaosController.getInstance();
+      controller.inject('active-target', { type: 'error', statusCode: 500 });
+      controller.inject('expired-target', { type: 'latency', delayMs: 10 }, 100);
+
+      vi.advanceTimersByTime(200);
+
+      const faults = controller.getActiveFaults();
+      const targets = faults.map(f => f.target);
+      expect(targets).toContain('active-target');
+      expect(targets).not.toContain('expired-target');
+
+      vi.useRealTimers();
+    });
+  });
+
+  describe('getFault cleans up expired faults for same target (Fix #9)', () => {
+    it('cleans up expired faults when returning a match', () => {
+      vi.useFakeTimers();
+      const controller = ChaosController.getInstance();
+      controller.inject('target', { type: 'latency', delayMs: 10 }, 100);
+      controller.inject('target', { type: 'error', statusCode: 503 });
+
+      vi.advanceTimersByTime(200);
+
+      const fault = controller.getFault('target');
+      expect(fault).not.toBeNull();
+      expect(fault!.type).toBe('error');
+      // The expired fault should have been cleaned up
+      expect(controller.getActiveFaults()).toHaveLength(1);
+
+      vi.useRealTimers();
+    });
+  });
+
   describe('reset for isolation', () => {
     it('clears the singleton instance', () => {
       const a = ChaosController.getInstance();
