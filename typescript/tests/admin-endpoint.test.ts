@@ -29,10 +29,13 @@ function createMockApp() {
 }
 
 describe('registerChaosEndpoint', () => {
+  const DEFAULT_TOKEN = 'test-admin-token';
+  const authHeaders = { authorization: `Bearer ${DEFAULT_TOKEN}` };
+
   beforeEach(() => {
     process.env['CHAOS_ENABLED'] = 'true';
     process.env['NODE_ENV'] = 'test';
-    delete process.env['CHAOS_ADMIN_TOKEN'];
+    process.env['CHAOS_ADMIN_TOKEN'] = DEFAULT_TOKEN;
     ChaosController.reset();
   });
 
@@ -55,7 +58,7 @@ describe('registerChaosEndpoint', () => {
     const app = createMockApp();
     registerChaosEndpoint(app as never);
 
-    const res = app.invoke('GET', '/chaos/status');
+    const res = app.invoke('GET', '/chaos/status', undefined, authHeaders);
     expect(res.json).toHaveBeenCalledWith({ faults: [] });
   });
 
@@ -66,7 +69,7 @@ describe('registerChaosEndpoint', () => {
     const res = app.invoke('POST', '/chaos/inject', {
       target: 'weather-api',
       config: { type: 'error', statusCode: 503 },
-    });
+    }, authHeaders);
 
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ faultId: expect.any(String) }),
@@ -80,7 +83,7 @@ describe('registerChaosEndpoint', () => {
     const controller = ChaosController.getInstance();
     const faultId = controller.inject('weather-api', { type: 'error', statusCode: 503 });
 
-    const res = app.invoke('POST', '/chaos/clear', { faultId });
+    const res = app.invoke('POST', '/chaos/clear', { faultId }, authHeaders);
     expect(res.json).toHaveBeenCalledWith({ cleared: faultId });
   });
 
@@ -91,7 +94,7 @@ describe('registerChaosEndpoint', () => {
     const controller = ChaosController.getInstance();
     controller.inject('weather-api', { type: 'error', statusCode: 503 });
 
-    const res = app.invoke('POST', '/chaos/clear-all');
+    const res = app.invoke('POST', '/chaos/clear-all', undefined, authHeaders);
     expect(res.json).toHaveBeenCalledWith({ cleared: 'all' });
     expect(controller.getActiveFaults()).toHaveLength(0);
   });
@@ -102,7 +105,7 @@ describe('registerChaosEndpoint', () => {
 
     const res = app.invoke('POST', '/chaos/inject', {
       config: { type: 'error', statusCode: 503 },
-    });
+    }, authHeaders);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.stringContaining('target') }),
@@ -116,7 +119,7 @@ describe('registerChaosEndpoint', () => {
     const res = app.invoke('POST', '/chaos/inject', {
       target: 'api',
       config: { type: 'bogus' },
-    });
+    }, authHeaders);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.stringContaining('config.type') }),
@@ -127,7 +130,7 @@ describe('registerChaosEndpoint', () => {
     const app = createMockApp();
     registerChaosEndpoint(app as never);
 
-    const res = app.invoke('POST', '/chaos/clear', {});
+    const res = app.invoke('POST', '/chaos/clear', {}, authHeaders);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.stringContaining('faultId') }),
@@ -176,7 +179,7 @@ describe('registerChaosEndpoint', () => {
     const res = app.invoke('POST', '/chaos/inject', {
       target: 'api',
       config: { type: 'latency' },  // missing delayMs
-    });
+    }, authHeaders);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.stringContaining('delayMs') }),
@@ -190,7 +193,7 @@ describe('registerChaosEndpoint', () => {
     const res = app.invoke('POST', '/chaos/inject', {
       target: 'api',
       config: { type: 'error', statusCode: 'not-a-number' },
-    });
+    }, authHeaders);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.stringContaining('statusCode') }),
@@ -204,7 +207,7 @@ describe('registerChaosEndpoint', () => {
     const res = app.invoke('POST', '/chaos/inject', {
       target: 'api',
       config: { type: 'latency', delayMs: 500 },
-    });
+    }, authHeaders);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ faultId: expect.any(String) }),
     );
@@ -218,7 +221,7 @@ describe('registerChaosEndpoint', () => {
       target: 'api',
       config: { type: 'error', statusCode: 503 },
       durationMs: 'not-a-number',
-    });
+    }, authHeaders);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.stringContaining('durationMs') }),
@@ -233,7 +236,7 @@ describe('registerChaosEndpoint', () => {
       target: 'api',
       config: { type: 'error', statusCode: 503 },
       durationMs: -1000,
-    });
+    }, authHeaders);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.stringContaining('durationMs') }),
@@ -247,7 +250,7 @@ describe('registerChaosEndpoint', () => {
     const res = app.invoke('POST', '/chaos/inject', {
       target: 'api',
       config: { type: 'schema-mismatch', missingFields: 42 },
-    });
+    }, authHeaders);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.stringContaining('missingFields') }),
@@ -261,7 +264,7 @@ describe('registerChaosEndpoint', () => {
     const res = app.invoke('POST', '/chaos/inject', {
       target: 'api',
       config: { type: 'error', statusCode: 503, message: 123 },
-    });
+    }, authHeaders);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.stringContaining('message') }),
@@ -275,7 +278,7 @@ describe('registerChaosEndpoint', () => {
     const res = app.invoke('POST', '/chaos/inject', {
       target: 'api',
       config: { type: 'schema-mismatch' },
-    });
+    }, authHeaders);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.stringContaining('missingFields') }),
@@ -289,7 +292,7 @@ describe('registerChaosEndpoint', () => {
     const res = app.invoke('POST', '/chaos/inject', {
       target: 'api',
       config: { type: 'malformed' },
-    });
+    }, authHeaders);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.stringContaining('corruptResponse') }),
@@ -303,7 +306,7 @@ describe('registerChaosEndpoint', () => {
     const res = app.invoke('POST', '/chaos/inject', {
       target: 'api',
       config: { type: 'error', statusCode: -1 },
-    });
+    }, authHeaders);
     expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ error: expect.stringContaining('non-negative') }),
@@ -327,9 +330,21 @@ describe('registerChaosEndpoint', () => {
       target: 'api',
       config: { type: 'error', statusCode: 503 },
       durationMs: 5000,
-    });
+    }, authHeaders);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ faultId: expect.any(String) }),
+    );
+  });
+
+  it('rejects requests when CHAOS_ADMIN_TOKEN is not set', () => {
+    delete process.env['CHAOS_ADMIN_TOKEN'];
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('GET', '/chaos/status');
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('CHAOS_ADMIN_TOKEN is not set') }),
     );
   });
 });

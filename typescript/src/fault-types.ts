@@ -13,6 +13,6 @@ export type FaultConfig =
   | { type: 'timeout'; hangMs: number; probability?: number }
   | { type: 'malformed'; corruptResponse: boolean; probability?: number }
   | { type: 'connection-refused'; probability?: number }
-  | { type: 'connection-drop'; afterBytes?: number; probability?: number }
+  | { type: 'connection-drop'; afterMs?: number; probability?: number }
   | { type: 'rate-limit'; retryAfterSeconds: number; probability?: number }
   | { type: 'schema-mismatch'; missingFields: string[]; probability?: number };

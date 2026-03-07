@@ -75,7 +75,7 @@
       "required": ["type"],
       "properties": {
         "type": { "const": "connection-drop" },
-        "afterBytes": { "type": "integer", "minimum": 0, "description": "Drop connection after this many bytes." },
+        "afterMs": { "type": "integer", "minimum": 0, "description": "Delay in milliseconds before dropping the connection." },
         "probability": { "$ref": "#/$defs/probability" }
       },
       "additionalProperties": false

@@ -102,6 +102,9 @@ async def _apply_async_fault(fault: FaultConfig, request: Any, transport: Any) -
             except (json.JSONDecodeError, UnicodeDecodeError):
                 logger.warning("schema-mismatch: upstream response is not valid JSON, returning as-is")
                 return response
+            if not isinstance(body, dict):
+                logger.warning("schema-mismatch: upstream JSON is not an object, returning as-is")
+                return response
             for field in fault.missing_fields:  # type: ignore[union-attr]
                 body.pop(field, None)
             new_content = json.dumps(body).encode()
@@ -164,6 +167,9 @@ def _apply_sync_fault(fault: FaultConfig, request: Any, transport: Any) -> Any:
                 body = json.loads(response.content)
             except (json.JSONDecodeError, UnicodeDecodeError):
                 logger.warning("schema-mismatch: upstream response is not valid JSON, returning as-is")
+                return response
+            if not isinstance(body, dict):
+                logger.warning("schema-mismatch: upstream JSON is not an object, returning as-is")
                 return response
             for field in fault.missing_fields:  # type: ignore[union-attr]
                 body.pop(field, None)

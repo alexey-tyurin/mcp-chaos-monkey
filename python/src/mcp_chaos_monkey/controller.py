@@ -51,6 +51,16 @@ class ChaosController:
                     cls._instance = cls()
         return cls._instance
 
+    def _sweep_expired(self, now: float) -> None:
+        """Remove all expired faults. Must be called while holding self._lock."""
+        expired = [
+            fid for fid, f in self._faults.items()
+            if f.expires_at is not None and now > f.expires_at
+        ]
+        for fid in expired:
+            del self._faults[fid]
+            logger.info("Expired fault swept: %s", fid)
+
     def inject(
         self,
         target: FaultTarget,
@@ -64,6 +74,7 @@ class ChaosController:
         now = time.time() * 1000
         fault_id = f"{target}-{int(now)}-{suffix}"
         with self._lock:
+            self._sweep_expired(now)
             if len(self._faults) >= MAX_FAULTS:
                 raise ValueError(
                     f"Maximum number of active faults ({MAX_FAULTS}) exceeded. "
@@ -116,7 +127,8 @@ class ChaosController:
                         fault.config.probability is not None
                         and random.random() > fault.config.probability
                     ):
-                        continue
+                        # Probability check failed — do not fall through to other faults
+                        break
                     fault.request_count += 1
                     matched_config = fault.config
             for eid in expired:

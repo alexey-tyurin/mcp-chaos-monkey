@@ -66,11 +66,15 @@ async function applyFault(
     }
     case 'schema-mismatch': {
       const realResponse = await originalFetch(input, init);
-      let body: Record<string, unknown>;
+      let body: unknown;
       try {
-        body = await realResponse.clone().json() as Record<string, unknown>;
+        body = await realResponse.clone().json() as unknown;
       } catch {
         logger.warn({ target: input }, 'schema-mismatch: upstream response is not valid JSON, returning as-is');
+        return realResponse;
+      }
+      if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+        logger.warn({ target: input }, 'schema-mismatch: upstream JSON is not an object, returning as-is');
         return realResponse;
       }
       for (const field of fault.missingFields) {
@@ -91,7 +95,7 @@ async function applyFault(
         : chaosAbort.signal;
       const mergedInit = { ...init, signal: combinedSignal };
       const fetchPromise = originalFetch(input, mergedInit);
-      const abortDelayMs = fault.afterBytes ?? 0;
+      const abortDelayMs = fault.afterMs ?? 0;
       setTimeout(() => { chaosAbort.abort(); }, abortDelayMs);
       return fetchPromise;
     }

@@ -269,4 +269,43 @@ describe('ChaosController', () => {
       vi.useRealTimers();
     });
   });
+
+  describe('probability fallthrough prevention (Fix #1)', () => {
+    it('does not fall through to second fault when first fault probability check fails', () => {
+      const controller = ChaosController.getInstance();
+      // Fault A: probability 0 (never triggers)
+      controller.inject('target', { type: 'latency', delayMs: 100, probability: 0 });
+      // Fault B: probability 1 (always triggers)
+      controller.inject('target', { type: 'error', statusCode: 503, probability: 1 });
+
+      // With the fix, probability failure on fault A should stop iteration (break),
+      // not continue to fault B
+      const result = controller.getFault('target');
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('expired faults swept during inject (Fix #4)', () => {
+    it('sweeps expired faults before checking MAX_FAULTS limit', () => {
+      vi.useFakeTimers();
+      const controller = ChaosController.getInstance();
+      // Fill up to MAX_FAULTS with expiring faults
+      for (let i = 0; i < 1000; i++) {
+        controller.inject(`target-${String(i)}`, { type: 'error', statusCode: 500 }, 100);
+      }
+
+      // All faults should be at capacity
+      expect(controller.getActiveFaults()).toHaveLength(1000);
+
+      // Advance time so all faults expire
+      vi.advanceTimersByTime(200);
+
+      // inject should sweep expired faults and succeed
+      expect(() =>
+        controller.inject('new-target', { type: 'error', statusCode: 500 }),
+      ).not.toThrow();
+
+      vi.useRealTimers();
+    });
+  });
 });

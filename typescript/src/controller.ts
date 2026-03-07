@@ -36,6 +36,7 @@ export class ChaosController {
     if (durationMs !== undefined && (typeof durationMs !== 'number' || !Number.isFinite(durationMs) || durationMs < 0)) {
       throw new Error('durationMs must be a non-negative finite number');
     }
+    this.sweepExpired();
     if (this.faults.size >= MAX_FAULTS) {
       throw new Error(`Maximum number of active faults (${String(MAX_FAULTS)}) exceeded. Clear some faults first.`);
     }
@@ -62,6 +63,16 @@ export class ChaosController {
     logger.info('All chaos faults cleared');
   }
 
+  private sweepExpired(): void {
+    const now = Date.now();
+    for (const [id, fault] of this.faults) {
+      if (fault.expiresAt !== null && now > fault.expiresAt) {
+        this.faults.delete(id);
+        logger.info({ faultId: id }, 'Chaos fault expired');
+      }
+    }
+  }
+
   getFault(target: FaultTarget): FaultConfig | null {
     const expired: string[] = [];
     let matchedConfig: FaultConfig | null = null;
@@ -76,7 +87,8 @@ export class ChaosController {
 
       if (matchedConfig === null) {
         if (fault.config.probability !== undefined && Math.random() > fault.config.probability) {
-          continue;
+          // Probability check failed — do not fall through to other faults
+          break;
         }
         fault.requestCount++;
         matchedConfig = fault.config;

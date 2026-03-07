@@ -22,7 +22,7 @@ def _check_admin_auth(headers: dict[str, str] | None = None) -> str | None:
     """Return an error message if auth fails, or None if OK."""
     required_token = os.environ.get("CHAOS_ADMIN_TOKEN")
     if required_token is None:
-        return None
+        return "CHAOS_ADMIN_TOKEN is not set — admin access denied. Set CHAOS_ADMIN_TOKEN to enable admin endpoints."
     if required_token == "":
         return "CHAOS_ADMIN_TOKEN is set but empty — refusing access"
     if headers is None:

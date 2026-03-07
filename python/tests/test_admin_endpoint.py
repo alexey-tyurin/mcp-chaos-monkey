@@ -103,10 +103,13 @@ def test_handle_clear_missing_fault_id() -> None:
         handle_clear({})
 
 
-def test_admin_auth_no_token_required() -> None:
-    """Fix #4: When CHAOS_ADMIN_TOKEN is not set, auth always passes."""
-    assert _check_admin_auth() is None
-    assert _check_admin_auth({"authorization": "Bearer whatever"}) is None
+def test_admin_auth_no_token_set_rejects() -> None:
+    """When CHAOS_ADMIN_TOKEN is not set, auth denies access."""
+    result = _check_admin_auth()
+    assert result is not None
+    assert "CHAOS_ADMIN_TOKEN is not set" in result
+    result = _check_admin_auth({"authorization": "Bearer whatever"})
+    assert result is not None
 
 
 def test_admin_auth_token_required(monkeypatch: pytest.MonkeyPatch) -> None:

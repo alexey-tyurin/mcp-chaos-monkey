@@ -169,3 +169,33 @@ def test_max_faults_limit() -> None:
         controller.inject(f"target-{i}", ErrorFault(status_code=500))
     with pytest.raises(ValueError, match="Maximum number of active faults"):
         controller.inject("one-too-many", ErrorFault(status_code=500))
+
+
+def test_probability_fallthrough_prevention() -> None:
+    """Fix #1: When probability check fails, do not fall through to next fault."""
+    controller = ChaosController.get_instance()
+    # Fault A: probability 0 (never triggers)
+    controller.inject("target", ErrorFault(status_code=500, probability=0.0))
+    # Fault B: probability 1 (always triggers)
+    controller.inject("target", LatencyFault(delay_ms=100, probability=1.0))
+
+    with patch("mcp_chaos_monkey.controller.random.random", return_value=0.5):
+        result = controller.get_fault("target")
+    # Should be None because fault A's probability failed and we break (not continue)
+    assert result is None
+
+
+def test_expired_faults_swept_during_inject() -> None:
+    """Fix #4: inject() sweeps expired faults before checking MAX_FAULTS limit."""
+    from mcp_chaos_monkey.controller import MAX_FAULTS
+
+    controller = ChaosController.get_instance()
+    # Fill up to MAX_FAULTS with faults that expire in 1ms
+    for i in range(MAX_FAULTS):
+        controller.inject(f"target-{i}", ErrorFault(status_code=500), duration_ms=1)
+
+    time.sleep(0.01)  # Let them all expire
+
+    # inject should sweep expired faults and succeed
+    fault_id = controller.inject("new-target", ErrorFault(status_code=500))
+    assert fault_id.startswith("new-target-")

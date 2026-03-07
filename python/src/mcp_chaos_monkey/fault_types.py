@@ -60,7 +60,7 @@ class ConnectionRefusedFault:
 
 @dataclass
 class ConnectionDropFault:
-    after_bytes: int | None = None
+    after_ms: int | None = None
     probability: float | None = None
     type: str = field(default=FaultType.CONNECTION_DROP, init=False)
 
@@ -100,8 +100,9 @@ _FIELD_MAP: dict[str, str] = {
     "hang_ms": "hang_ms",
     "corruptResponse": "corrupt_response",
     "corrupt_response": "corrupt_response",
-    "afterBytes": "after_bytes",
-    "after_bytes": "after_bytes",
+    "afterBytes": "after_ms",
+    "afterMs": "after_ms",
+    "after_ms": "after_ms",
     "retryAfterSeconds": "retry_after_seconds",
     "retry_after_seconds": "retry_after_seconds",
     "missingFields": "missing_fields",
@@ -153,7 +154,7 @@ def parse_fault_config(data: dict[str, Any]) -> FaultConfig:
     return cls(**kwargs)  # type: ignore[call-arg]
 
 
-_NUMERIC_FIELDS = {"delay_ms", "status_code", "hang_ms", "retry_after_seconds", "after_bytes"}
+_NUMERIC_FIELDS = {"delay_ms", "status_code", "hang_ms", "retry_after_seconds", "after_ms"}
 
 
 def _validate_field_types(fault_type: str, kwargs: dict[str, Any]) -> None:

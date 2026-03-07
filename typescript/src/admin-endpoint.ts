@@ -16,7 +16,8 @@ const VALID_FAULT_TYPES = new Set([
 function checkAdminAuth(req: Request, res: Response): boolean {
   const requiredToken = process.env['CHAOS_ADMIN_TOKEN'];
   if (requiredToken === undefined) {
-    return true;
+    res.status(403).json({ error: 'CHAOS_ADMIN_TOKEN is not set — admin access denied. Set CHAOS_ADMIN_TOKEN to enable admin endpoints.' });
+    return false;
   }
   if (requiredToken === '') {
     res.status(403).json({ error: 'CHAOS_ADMIN_TOKEN is set but empty — refusing access' });

@@ -203,3 +203,32 @@ async def test_schema_mismatch_non_json_response() -> None:
     # Should return the original response as-is instead of crashing
     assert resp.status_code == 500
     assert b"<html>" in resp.content
+
+
+class _JsonArrayTransport(httpx.AsyncBaseTransport):
+    """Test transport that returns a JSON array instead of an object."""
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        body = json.dumps([{"id": 1, "name": "a"}, {"id": 2, "name": "b"}])
+        return httpx.Response(
+            status_code=200,
+            content=body.encode(),
+            headers={"Content-Type": "application/json"},
+            request=request,
+        )
+
+
+@pytest.mark.asyncio
+async def test_schema_mismatch_json_array_response() -> None:
+    """Fix #12: schema-mismatch on JSON array response should not crash."""
+    controller = ChaosController.get_instance()
+    controller.inject("array-api", SchemaMismatchFault(missing_fields=["id"]))
+    transport = _JsonArrayTransport()
+    chaos = _ChaosAsyncTransport("array-api", transport)
+    client = httpx.AsyncClient(transport=chaos)
+    resp = await client.get("http://example.com/test")
+    # Should return the original array response as-is
+    assert resp.status_code == 200
+    data = resp.json()
+    assert isinstance(data, list)
+    assert data[0]["id"] == 1  # field NOT stripped because body is not a dict

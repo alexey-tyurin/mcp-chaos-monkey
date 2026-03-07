@@ -172,6 +172,29 @@ describe('createChaosAwareFetch', () => {
       expect(text).toContain('<html>');
     });
 
+    it('returns original response when upstream JSON is an array (Fix #12)', async () => {
+      const arr = [{ id: 1 }, { id: 2 }];
+      const mockFetch = vi.fn(async () =>
+        new Response(JSON.stringify(arr), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      const chaosAwareFetch = createChaosAwareFetch('array-api', mockFetch);
+
+      controller.inject('array-api', {
+        type: 'schema-mismatch',
+        missingFields: ['id'],
+      });
+
+      const response = await chaosAwareFetch('http://example.com');
+      expect(response.status).toBe(200);
+      const body = await response.json() as unknown;
+      // Should return original array as-is since it's not an object
+      expect(Array.isArray(body)).toBe(true);
+      expect((body as { id: number }[])[0]!.id).toBe(1);
+    });
+
     it('does not pass through stale Content-Length after field removal (Fix #2)', async () => {
       const original = { city: 'NYC', temperature: 72, humidity: 45 };
       const originalBody = JSON.stringify(original);
@@ -198,7 +221,7 @@ describe('createChaosAwareFetch', () => {
   });
 
   describe('connection-drop fault', () => {
-    it('aborts immediately when afterBytes is not set (defaults to 0)', async () => {
+    it('aborts immediately when afterMs is not set (defaults to 0)', async () => {
       const mockFetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
         return new Promise<Response>((resolve, reject) => {
           const signal = init?.signal;
@@ -219,7 +242,7 @@ describe('createChaosAwareFetch', () => {
       expect(mockFetch).toHaveBeenCalledOnce();
     });
 
-    it('uses afterBytes as abort delay in ms (LOGIC-3)', async () => {
+    it('uses afterMs as abort delay in ms', async () => {
       vi.useFakeTimers();
       let aborted = false;
       const mockFetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
@@ -238,7 +261,7 @@ describe('createChaosAwareFetch', () => {
       });
       const chaosAwareFetch = createChaosAwareFetch('weather-api', mockFetch);
 
-      controller.inject('weather-api', { type: 'connection-drop', afterBytes: 200 });
+      controller.inject('weather-api', { type: 'connection-drop', afterMs: 200 });
 
       const promise = chaosAwareFetch('http://example.com').catch((e: unknown) => e);
 
