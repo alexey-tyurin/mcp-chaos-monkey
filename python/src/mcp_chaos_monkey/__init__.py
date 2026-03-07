@@ -1,14 +1,19 @@
 """mcp-chaos-monkey — Chaos/fault injection framework for MCP projects."""
 
 # Core
-from .guard import ChaosNotAllowedError, assert_chaos_allowed
+# Admin (framework-agnostic handlers)
+from .admin_endpoint import handle_clear, handle_clear_all, handle_inject, handle_status
+
+# CLI
+from .cli import run_cli
+from .controller import ActiveFaultInfo, ChaosController
 from .fault_types import (
-    FaultConfig,
-    FaultTarget,
-    FaultType,
     ConnectionDropFault,
     ConnectionRefusedFault,
     ErrorFault,
+    FaultConfig,
+    FaultTarget,
+    FaultType,
     LatencyFault,
     MalformedFault,
     RateLimitFault,
@@ -17,19 +22,13 @@ from .fault_types import (
     is_fault_target,
     parse_fault_config,
 )
-from .controller import ActiveFaultInfo, ChaosController
+from .guard import ChaosNotAllowedError, assert_chaos_allowed
 
 # Logger
 from .logger import ChaosLogger, configure_chaos_logger, create_default_logger
 
 # Scenarios
 from .scenarios import ChaosScenario, ScenarioFault, define_scenario
-
-# Admin (framework-agnostic handlers)
-from .admin_endpoint import handle_clear, handle_clear_all, handle_inject, handle_status
-
-# CLI
-from .cli import run_cli
 
 __all__ = [
     # Core

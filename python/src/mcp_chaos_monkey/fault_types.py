@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import Any, Union
+from typing import Any
 
 FaultTarget = str
 
@@ -79,16 +79,16 @@ class SchemaMismatchFault:
     type: str = field(default=FaultType.SCHEMA_MISMATCH, init=False)
 
 
-FaultConfig = Union[
-    LatencyFault,
-    ErrorFault,
-    TimeoutFault,
-    MalformedFault,
-    ConnectionRefusedFault,
-    ConnectionDropFault,
-    RateLimitFault,
-    SchemaMismatchFault,
-]
+FaultConfig = (
+    LatencyFault
+    | ErrorFault
+    | TimeoutFault
+    | MalformedFault
+    | ConnectionRefusedFault
+    | ConnectionDropFault
+    | RateLimitFault
+    | SchemaMismatchFault
+)
 
 # Maps JSON/dict keys (camelCase and snake_case) to dataclass field names
 _FIELD_MAP: dict[str, str] = {
@@ -165,7 +165,8 @@ def _validate_field_types(fault_type: str, kwargs: dict[str, Any]) -> None:
         if key in _NUMERIC_FIELDS:
             if value is not None and not isinstance(value, (int, float)):
                 raise ValueError(
-                    f"{key} must be a number for fault type '{fault_type}', got {type(value).__name__}"
+                    f"{key} must be a number for fault type "
+                    f"'{fault_type}', got {type(value).__name__}"
                 )
             if value is not None and value < 0:
                 raise ValueError(
@@ -179,10 +180,12 @@ def _validate_field_types(fault_type: str, kwargs: dict[str, Any]) -> None:
         elif key == "message":
             if value is not None and not isinstance(value, str):
                 raise ValueError(
-                    f"message must be a string for fault type '{fault_type}', got {type(value).__name__}"
+                    f"message must be a string for fault type "
+                    f"'{fault_type}', got {type(value).__name__}"
                 )
         elif key == "corrupt_response":
             if not isinstance(value, bool):
                 raise ValueError(
-                    f"corrupt_response must be a boolean for fault type '{fault_type}', got {type(value).__name__}"
+                    f"corrupt_response must be a boolean for fault type "
+                    f"'{fault_type}', got {type(value).__name__}"
                 )

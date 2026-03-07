@@ -9,7 +9,6 @@ from mcp_chaos_monkey.admin_endpoint import (
     handle_inject,
     handle_status,
 )
-from mcp_chaos_monkey.controller import ChaosController
 
 
 def test_handle_status_empty() -> None:
@@ -126,7 +125,10 @@ def test_admin_auth_uses_timing_safe_comparison(monkeypatch: pytest.MonkeyPatch)
     from unittest.mock import patch as mock_patch
 
     monkeypatch.setenv("CHAOS_ADMIN_TOKEN", "secret123")
-    with mock_patch("mcp_chaos_monkey.admin_endpoint.hmac.compare_digest", wraps=hmac.compare_digest) as mock_cmp:
+    with mock_patch(
+        "mcp_chaos_monkey.admin_endpoint.hmac.compare_digest",
+        wraps=hmac.compare_digest,
+    ) as mock_cmp:
         _check_admin_auth({"authorization": "Bearer secret123"})
         mock_cmp.assert_called_once()
 

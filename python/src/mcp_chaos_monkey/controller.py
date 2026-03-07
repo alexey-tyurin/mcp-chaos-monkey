@@ -67,9 +67,10 @@ class ChaosController:
         config: FaultConfig,
         duration_ms: int | float | None = None,
     ) -> str:
-        if duration_ms is not None:
-            if not isinstance(duration_ms, (int, float)) or duration_ms < 0:
-                raise ValueError("duration_ms must be a non-negative number")
+        if duration_ms is not None and (
+            not isinstance(duration_ms, (int, float)) or duration_ms < 0
+        ):
+            raise ValueError("duration_ms must be a non-negative number")
         suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
         now = time.time() * 1000
         fault_id = f"{target}-{int(now)}-{suffix}"

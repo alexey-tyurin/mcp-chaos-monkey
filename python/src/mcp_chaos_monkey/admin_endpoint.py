@@ -22,7 +22,10 @@ def _check_admin_auth(headers: dict[str, str] | None = None) -> str | None:
     """Return an error message if auth fails, or None if OK."""
     required_token = os.environ.get("CHAOS_ADMIN_TOKEN")
     if required_token is None:
-        return "CHAOS_ADMIN_TOKEN is not set — admin access denied. Set CHAOS_ADMIN_TOKEN to enable admin endpoints."
+        return (
+            "CHAOS_ADMIN_TOKEN is not set — admin access denied. "
+            "Set CHAOS_ADMIN_TOKEN to enable admin endpoints."
+        )
     if required_token == "":
         return "CHAOS_ADMIN_TOKEN is set but empty — refusing access"
     if headers is None:
@@ -52,9 +55,10 @@ def handle_inject(body: dict[str, Any]) -> dict[str, Any]:
             f"(must be one of: {', '.join(sorted(_VALID_FAULT_TYPES))})"
         )
     duration_ms = body.get("duration_ms")
-    if duration_ms is not None:
-        if not isinstance(duration_ms, (int, float)) or duration_ms < 0:
-            raise ValueError("duration_ms must be a non-negative number")
+    if duration_ms is not None and (
+        not isinstance(duration_ms, (int, float)) or duration_ms < 0
+    ):
+        raise ValueError("duration_ms must be a non-negative number")
     controller = ChaosController.get_instance()
     config: FaultConfig = parse_fault_config(config_data)
     fault_id = controller.inject(target, config, duration_ms)

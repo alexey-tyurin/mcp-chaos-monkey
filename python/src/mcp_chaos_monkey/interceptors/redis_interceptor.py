@@ -3,7 +3,8 @@ from __future__ import annotations
 import asyncio
 import functools
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from ..controller import ChaosController
 from ..fault_types import FaultTarget
@@ -34,7 +35,9 @@ def wrap_redis_with_chaos(
 
         if is_async:
             @functools.wraps(original)
-            async def async_wrapped(*args: Any, _orig: Any = original, _cmd: str = cmd, **kwargs: Any) -> Any:
+            async def async_wrapped(
+                *args: Any, _orig: Any = original, _cmd: str = cmd, **kwargs: Any,
+            ) -> Any:
                 controller = ChaosController.get_instance()
                 fault = controller.get_fault(target)
 
@@ -65,7 +68,9 @@ def wrap_redis_with_chaos(
             setattr(client, cmd, async_wrapped)
         else:
             @functools.wraps(original)
-            def sync_wrapped(*args: Any, _orig: Any = original, _cmd: str = cmd, **kwargs: Any) -> Any:
+            def sync_wrapped(
+                *args: Any, _orig: Any = original, _cmd: str = cmd, **kwargs: Any,
+            ) -> Any:
                 controller = ChaosController.get_instance()
                 fault = controller.get_fault(target)
 

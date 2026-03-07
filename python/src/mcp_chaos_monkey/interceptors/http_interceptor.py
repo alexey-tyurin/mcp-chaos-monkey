@@ -85,7 +85,10 @@ async def _apply_async_fault(fault: FaultConfig, request: Any, transport: Any) -
             return httpx.Response(
                 status_code=429,
                 content=json.dumps({"error": "Too Many Requests"}).encode(),
-                headers={"Retry-After": str(fault.retry_after_seconds), "Content-Type": "application/json"},  # type: ignore[union-attr]
+                headers={
+                    "Retry-After": str(fault.retry_after_seconds),  # type: ignore[union-attr]
+                    "Content-Type": "application/json",
+                },
                 request=request,
             )
         case "malformed":
@@ -100,7 +103,9 @@ async def _apply_async_fault(fault: FaultConfig, request: Any, transport: Any) -
             try:
                 body = json.loads(response.content)
             except (json.JSONDecodeError, UnicodeDecodeError):
-                logger.warning("schema-mismatch: upstream response is not valid JSON, returning as-is")
+                logger.warning(
+                    "schema-mismatch: upstream response is not valid JSON, returning as-is"
+                )
                 return response
             if not isinstance(body, dict):
                 logger.warning("schema-mismatch: upstream JSON is not an object, returning as-is")
@@ -108,7 +113,10 @@ async def _apply_async_fault(fault: FaultConfig, request: Any, transport: Any) -
             for field in fault.missing_fields:  # type: ignore[union-attr]
                 body.pop(field, None)
             new_content = json.dumps(body).encode()
-            new_headers = {k: v for k, v in response.headers.items() if k.lower() != "content-length"}
+            new_headers = {
+                k: v for k, v in response.headers.items()
+                if k.lower() != "content-length"
+            }
             new_headers["content-length"] = str(len(new_content))
             return httpx.Response(
                 status_code=response.status_code,
@@ -151,7 +159,10 @@ def _apply_sync_fault(fault: FaultConfig, request: Any, transport: Any) -> Any:
             return httpx.Response(
                 status_code=429,
                 content=json.dumps({"error": "Too Many Requests"}).encode(),
-                headers={"Retry-After": str(fault.retry_after_seconds), "Content-Type": "application/json"},  # type: ignore[union-attr]
+                headers={
+                    "Retry-After": str(fault.retry_after_seconds),  # type: ignore[union-attr]
+                    "Content-Type": "application/json",
+                },
                 request=request,
             )
         case "malformed":
@@ -166,7 +177,9 @@ def _apply_sync_fault(fault: FaultConfig, request: Any, transport: Any) -> Any:
             try:
                 body = json.loads(response.content)
             except (json.JSONDecodeError, UnicodeDecodeError):
-                logger.warning("schema-mismatch: upstream response is not valid JSON, returning as-is")
+                logger.warning(
+                    "schema-mismatch: upstream response is not valid JSON, returning as-is"
+                )
                 return response
             if not isinstance(body, dict):
                 logger.warning("schema-mismatch: upstream JSON is not an object, returning as-is")
@@ -174,7 +187,10 @@ def _apply_sync_fault(fault: FaultConfig, request: Any, transport: Any) -> Any:
             for field in fault.missing_fields:  # type: ignore[union-attr]
                 body.pop(field, None)
             new_content = json.dumps(body).encode()
-            new_headers = {k: v for k, v in response.headers.items() if k.lower() != "content-length"}
+            new_headers = {
+                k: v for k, v in response.headers.items()
+                if k.lower() != "content-length"
+            }
             new_headers["content-length"] = str(len(new_content))
             return httpx.Response(
                 status_code=response.status_code,
