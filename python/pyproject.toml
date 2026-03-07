@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "Chaos/fault injection framework for MCP (Model Context Protocol) projects"
 readme = "README.md"
 license = "MIT"
+authors = [{name = "Alexey Tyurin"}]
 requires-python = ">=3.11"
 keywords = ["mcp", "chaos-engineering", "fault-injection", "testing", "resilience"]
 classifiers = [
