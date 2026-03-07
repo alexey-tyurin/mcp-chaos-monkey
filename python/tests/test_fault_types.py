@@ -70,6 +70,27 @@ def test_parse_accepts_valid_schema_mismatch() -> None:
     assert config.missing_fields == ["field1", "field2"]  # type: ignore[union-attr]
 
 
+def test_parse_rejects_negative_delay_ms() -> None:
+    """Fix: Negative numeric fields should be rejected."""
+    with pytest.raises(ValueError, match="non-negative"):
+        parse_fault_config({"type": "latency", "delayMs": -500})
+
+
+def test_parse_rejects_negative_status_code() -> None:
+    with pytest.raises(ValueError, match="non-negative"):
+        parse_fault_config({"type": "error", "statusCode": -1})
+
+
+def test_parse_rejects_negative_hang_ms() -> None:
+    with pytest.raises(ValueError, match="non-negative"):
+        parse_fault_config({"type": "timeout", "hangMs": -100})
+
+
+def test_parse_rejects_negative_retry_after() -> None:
+    with pytest.raises(ValueError, match="non-negative"):
+        parse_fault_config({"type": "rate-limit", "retryAfterSeconds": -10})
+
+
 def test_parse_accepts_valid_error_with_message() -> None:
     config = parse_fault_config({
         "type": "error",

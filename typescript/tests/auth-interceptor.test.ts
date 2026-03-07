@@ -108,6 +108,22 @@ describe('chaosAuthMiddleware', () => {
 
       vi.useRealTimers();
     });
+
+    it('does not send response if client already disconnected (Fix #11)', async () => {
+      vi.useFakeTimers();
+      const { req, res, next } = createMockReqRes();
+      // Simulate client disconnect — writableEnded = true
+      Object.defineProperty(res, 'writableEnded', { value: true });
+      controller.inject('oauth-token', { type: 'timeout', hangMs: 1000 });
+
+      chaosAuthMiddleware(req, res, next);
+
+      await vi.advanceTimersByTimeAsync(1100);
+      // Should NOT attempt to write response since client disconnected
+      expect(res.status).not.toHaveBeenCalled();
+
+      vi.useRealTimers();
+    });
   });
 
   it('calls next for unsupported fault types', () => {

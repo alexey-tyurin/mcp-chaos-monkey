@@ -166,6 +166,10 @@ def _validate_field_types(fault_type: str, kwargs: dict[str, Any]) -> None:
                 raise ValueError(
                     f"{key} must be a number for fault type '{fault_type}', got {type(value).__name__}"
                 )
+            if value is not None and value < 0:
+                raise ValueError(
+                    f"{key} must be non-negative for fault type '{fault_type}', got {value}"
+                )
         elif key == "missing_fields":
             if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
                 raise ValueError(

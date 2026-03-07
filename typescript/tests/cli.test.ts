@@ -106,6 +106,34 @@ describe('runCli', () => {
     }
   });
 
+  it('rejects non-numeric --status flag', () => {
+    expect(() => {
+      runCli(['inject', 'weather-api', 'error', '--status', 'foo']);
+    }).toThrow('--status must be a non-negative number');
+  });
+
+  it('rejects non-numeric --delay flag', () => {
+    expect(() => {
+      runCli(['inject', 'weather-api', 'latency', '--delay', 'bar']);
+    }).toThrow('--delay must be a non-negative number');
+  });
+
+  it('rejects negative --status flag', () => {
+    expect(() => {
+      runCli(['inject', 'weather-api', 'error', '--status', '-1']);
+    }).toThrow('--status must be a non-negative number');
+  });
+
+  it('rejects non-numeric --duration flag', () => {
+    let stderrOutput = '';
+    vi.spyOn(process.stderr, 'write').mockImplementation((chunk: string | Uint8Array) => {
+      stderrOutput += String(chunk);
+      return true;
+    });
+    runCli(['inject', 'weather-api', 'error', '--status', '503', '--duration', 'abc']);
+    expect(stderrOutput).toContain('--duration must be a non-negative number');
+  });
+
   it('--duration 0 creates an immediately-expiring fault', () => {
     vi.useFakeTimers();
     runCli(['inject', 'weather-api', 'error', '--status', '503', '--duration', '0']);

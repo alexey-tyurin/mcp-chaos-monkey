@@ -68,7 +68,8 @@ async def _apply_async_fault(fault: FaultConfig, request: Any, transport: Any) -
         case "error":
             return httpx.Response(
                 status_code=fault.status_code,  # type: ignore[union-attr]
-                json={"error": fault.message or "Chaos injected error"},  # type: ignore[union-attr]
+                content=json.dumps({"error": fault.message or "Chaos injected error"}).encode(),  # type: ignore[union-attr]
+                headers={"Content-Type": "application/json"},
                 request=request,
             )
         case "timeout":
@@ -83,8 +84,8 @@ async def _apply_async_fault(fault: FaultConfig, request: Any, transport: Any) -
         case "rate-limit":
             return httpx.Response(
                 status_code=429,
-                headers={"Retry-After": str(fault.retry_after_seconds)},  # type: ignore[union-attr]
-                json={"error": "Too Many Requests"},
+                content=json.dumps({"error": "Too Many Requests"}).encode(),
+                headers={"Retry-After": str(fault.retry_after_seconds), "Content-Type": "application/json"},  # type: ignore[union-attr]
                 request=request,
             )
         case "malformed":
@@ -103,10 +104,13 @@ async def _apply_async_fault(fault: FaultConfig, request: Any, transport: Any) -
                 return response
             for field in fault.missing_fields:  # type: ignore[union-attr]
                 body.pop(field, None)
+            new_content = json.dumps(body).encode()
+            new_headers = {k: v for k, v in response.headers.items() if k.lower() != "content-length"}
+            new_headers["content-length"] = str(len(new_content))
             return httpx.Response(
                 status_code=response.status_code,
-                content=json.dumps(body).encode(),
-                headers=dict(response.headers),
+                content=new_content,
+                headers=new_headers,
                 request=request,
             )
         case "connection-drop":
@@ -127,7 +131,8 @@ def _apply_sync_fault(fault: FaultConfig, request: Any, transport: Any) -> Any:
         case "error":
             return httpx.Response(
                 status_code=fault.status_code,  # type: ignore[union-attr]
-                json={"error": fault.message or "Chaos injected error"},  # type: ignore[union-attr]
+                content=json.dumps({"error": fault.message or "Chaos injected error"}).encode(),  # type: ignore[union-attr]
+                headers={"Content-Type": "application/json"},
                 request=request,
             )
         case "timeout":
@@ -142,8 +147,8 @@ def _apply_sync_fault(fault: FaultConfig, request: Any, transport: Any) -> Any:
         case "rate-limit":
             return httpx.Response(
                 status_code=429,
-                headers={"Retry-After": str(fault.retry_after_seconds)},  # type: ignore[union-attr]
-                json={"error": "Too Many Requests"},
+                content=json.dumps({"error": "Too Many Requests"}).encode(),
+                headers={"Retry-After": str(fault.retry_after_seconds), "Content-Type": "application/json"},  # type: ignore[union-attr]
                 request=request,
             )
         case "malformed":
@@ -162,10 +167,13 @@ def _apply_sync_fault(fault: FaultConfig, request: Any, transport: Any) -> Any:
                 return response
             for field in fault.missing_fields:  # type: ignore[union-attr]
                 body.pop(field, None)
+            new_content = json.dumps(body).encode()
+            new_headers = {k: v for k, v in response.headers.items() if k.lower() != "content-length"}
+            new_headers["content-length"] = str(len(new_content))
             return httpx.Response(
                 status_code=response.status_code,
-                content=json.dumps(body).encode(),
-                headers=dict(response.headers),
+                content=new_content,
+                headers=new_headers,
                 request=request,
             )
         case "connection-drop":

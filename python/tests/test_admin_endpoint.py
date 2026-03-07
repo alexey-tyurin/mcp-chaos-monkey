@@ -171,3 +171,33 @@ def test_handle_inject_rejects_non_numeric_config_fields() -> None:
             "target": "api",
             "config": {"type": "latency", "delayMs": "not_a_number"},
         })
+
+
+def test_admin_auth_empty_token_rejects(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fix: Empty CHAOS_ADMIN_TOKEN should not disable auth."""
+    monkeypatch.setenv("CHAOS_ADMIN_TOKEN", "")
+    # With empty token set, auth should require a valid token
+    # Since the token is empty, no Bearer token can match, so auth must fail
+    result = _check_admin_auth({"authorization": "Bearer anything"})
+    assert result is not None  # should return error message
+
+
+def test_handle_inject_rejects_negative_numeric_fields() -> None:
+    """Fix: Negative delay_ms, status_code, etc. should be rejected."""
+    with pytest.raises(ValueError, match="non-negative"):
+        handle_inject({
+            "target": "api",
+            "config": {"type": "latency", "delayMs": -500},
+        })
+
+    with pytest.raises(ValueError, match="non-negative"):
+        handle_inject({
+            "target": "api",
+            "config": {"type": "error", "statusCode": -1},
+        })
+
+    with pytest.raises(ValueError, match="non-negative"):
+        handle_inject({
+            "target": "api",
+            "config": {"type": "timeout", "hangMs": -100},
+        })

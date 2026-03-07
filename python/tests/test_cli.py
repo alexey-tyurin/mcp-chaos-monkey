@@ -65,6 +65,16 @@ def test_no_command_shows_help(capsys: pytest.CaptureFixture[str]) -> None:
     assert "usage:" in captured.out.lower() or "mcp-chaos" in captured.out.lower()
 
 
+def test_no_command_shows_help_without_chaos_enabled(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Fix: --help / no command should work without CHAOS_ENABLED set."""
+    monkeypatch.delenv("CHAOS_ENABLED", raising=False)
+    run_cli([])
+    captured = capsys.readouterr()
+    assert "usage:" in captured.out.lower() or "mcp-chaos" in captured.out.lower()
+
+
 def test_inject_with_duration_zero(capsys: pytest.CaptureFixture[str]) -> None:
     """Fix #1: --duration 0 should create a fault that expires immediately, not a permanent one."""
     import time

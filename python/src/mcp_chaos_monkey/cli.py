@@ -78,14 +78,14 @@ def _build_parser() -> argparse.ArgumentParser:
 
 def run_cli(argv: list[str] | None = None) -> None:
     """Run the chaos CLI with the given arguments."""
-    assert_chaos_allowed()
-
     parser = _build_parser()
     args = parser.parse_args(argv)
 
     if not args.command:
         parser.print_help()
         return
+
+    assert_chaos_allowed()
 
     match args.command:
         case "inject":

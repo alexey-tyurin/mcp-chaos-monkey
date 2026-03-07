@@ -15,7 +15,14 @@ const VALID_FAULT_TYPES = new Set([
 
 function checkAdminAuth(req: Request, res: Response): boolean {
   const requiredToken = process.env['CHAOS_ADMIN_TOKEN'];
-  if (!requiredToken) return true;
+  if (requiredToken === undefined) {
+    logger.warn('CHAOS_ADMIN_TOKEN is not set — admin endpoints are unauthenticated');
+    return true;
+  }
+  if (requiredToken === '') {
+    res.status(403).json({ error: 'CHAOS_ADMIN_TOKEN is set but empty — refusing access' });
+    return false;
+  }
   const provided = req.headers['authorization']?.replace(/^Bearer /, '') ?? '';
   const key = 'chaos-admin-auth';
   const a = createHmac('sha256', key).update(provided).digest();
@@ -52,8 +59,22 @@ function validateFaultConfig(config: { type: string; [key: string]: unknown }): 
   }
   if (config.type === 'schema-mismatch') {
     const mf = config['missingFields'];
-    if (mf !== undefined && (!Array.isArray(mf) || !mf.every((v: unknown) => typeof v === 'string'))) {
+    if (mf === undefined || !Array.isArray(mf) || !mf.every((v: unknown) => typeof v === 'string')) {
       return 'config.missingFields must be an array of strings for fault type \'schema-mismatch\'';
+    }
+  }
+  if (config.type === 'malformed') {
+    const cr = config['corruptResponse'];
+    if (cr === undefined || typeof cr !== 'boolean') {
+      return 'config.corruptResponse must be a boolean for fault type \'malformed\'';
+    }
+  }
+  if (requiredFields) {
+    for (const field of requiredFields) {
+      const val = config[field] as number;
+      if (val < 0) {
+        return `config.${field} must be a non-negative number for fault type '${config.type}'`;
+      }
     }
   }
   if (config['message'] !== undefined && typeof config['message'] !== 'string') {

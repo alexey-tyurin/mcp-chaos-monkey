@@ -58,32 +58,32 @@ export class ChaosController {
   }
 
   getFault(target: FaultTarget): FaultConfig | null {
+    const expired: string[] = [];
+    let matchedConfig: FaultConfig | null = null;
+
     for (const [id, fault] of this.faults) {
       if (fault.target !== target) continue;
 
       if (fault.expiresAt !== null && Date.now() > fault.expiresAt) {
-        this.faults.delete(id);
-        logger.info({ faultId: id }, 'Chaos fault expired');
+        expired.push(id);
         continue;
       }
 
-      if (fault.config.probability !== undefined && Math.random() > fault.config.probability) {
-        continue;
-      }
-
-      fault.requestCount++;
-      // Continue iterating to clean up any remaining expired faults for this target
-      const config = fault.config;
-      for (const [remainingId, remainingFault] of this.faults) {
-        if (remainingId === id) continue;
-        if (remainingFault.target !== target) continue;
-        if (remainingFault.expiresAt !== null && Date.now() > remainingFault.expiresAt) {
-          this.faults.delete(remainingId);
+      if (matchedConfig === null) {
+        if (fault.config.probability !== undefined && Math.random() > fault.config.probability) {
+          continue;
         }
+        fault.requestCount++;
+        matchedConfig = fault.config;
       }
-      return config;
     }
-    return null;
+
+    for (const id of expired) {
+      this.faults.delete(id);
+      logger.info({ faultId: id }, 'Chaos fault expired');
+    }
+
+    return matchedConfig;
   }
 
   getActiveFaults(): readonly {

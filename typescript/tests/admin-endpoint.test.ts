@@ -268,6 +268,57 @@ describe('registerChaosEndpoint', () => {
     );
   });
 
+  it('rejects schema-mismatch without missingFields (Fix #3)', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/inject', {
+      target: 'api',
+      config: { type: 'schema-mismatch' },
+    });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('missingFields') }),
+    );
+  });
+
+  it('rejects malformed without corruptResponse (Fix #12)', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/inject', {
+      target: 'api',
+      config: { type: 'malformed' },
+    });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('corruptResponse') }),
+    );
+  });
+
+  it('rejects negative numeric config values (Fix #9)', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/inject', {
+      target: 'api',
+      config: { type: 'error', statusCode: -1 },
+    });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('non-negative') }),
+    );
+  });
+
+  it('rejects requests when CHAOS_ADMIN_TOKEN is empty string (Fix #2)', () => {
+    process.env['CHAOS_ADMIN_TOKEN'] = '';
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('GET', '/chaos/status');
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
   it('accepts inject with valid durationMs', () => {
     const app = createMockApp();
     registerChaosEndpoint(app as never);

@@ -43,3 +43,19 @@ def test_case_insensitive_production(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENVIRONMENT", "Production")
     with pytest.raises(ChaosNotAllowedError, match="production"):
         assert_chaos_allowed()
+
+
+def test_chaos_enabled_case_insensitive_true(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fix: CHAOS_ENABLED=True and CHAOS_ENABLED=TRUE should work."""
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.delenv("NODE_ENV", raising=False)
+    monkeypatch.setenv("CHAOS_ENABLED", "True")
+    assert_chaos_allowed()  # should not raise
+
+
+def test_chaos_enabled_case_insensitive_upper(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fix: CHAOS_ENABLED=TRUE should work."""
+    monkeypatch.delenv("ENVIRONMENT", raising=False)
+    monkeypatch.delenv("NODE_ENV", raising=False)
+    monkeypatch.setenv("CHAOS_ENABLED", "TRUE")
+    assert_chaos_allowed()  # should not raise

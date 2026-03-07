@@ -21,7 +21,7 @@ _VALID_FAULT_TYPES = {
 def _check_admin_auth(headers: dict[str, str] | None = None) -> str | None:
     """Return an error message if auth fails, or None if OK."""
     required_token = os.environ.get("CHAOS_ADMIN_TOKEN")
-    if not required_token:
+    if required_token is None:
         return None
     if headers is None:
         return "Invalid or missing CHAOS_ADMIN_TOKEN"

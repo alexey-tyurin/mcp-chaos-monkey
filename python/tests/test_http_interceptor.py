@@ -133,6 +133,65 @@ class _HtmlTransport(httpx.AsyncBaseTransport):
 
 
 @pytest.mark.asyncio
+async def test_error_fault_response_is_valid_json() -> None:
+    """Fix: httpx.Response must use content= not json= kwarg."""
+    controller = ChaosController.get_instance()
+    controller.inject("test-api", ErrorFault(status_code=503, message="down"))
+    client = _make_client()
+    resp = await client.get("http://example.com/test")
+    assert resp.status_code == 503
+    data = resp.json()
+    assert data["error"] == "down"
+    assert resp.headers["content-type"] == "application/json"
+
+
+@pytest.mark.asyncio
+async def test_rate_limit_fault_response_is_valid_json() -> None:
+    """Fix: rate-limit response must use content= not json= kwarg."""
+    controller = ChaosController.get_instance()
+    controller.inject("test-api", RateLimitFault(retry_after_seconds=60))
+    client = _make_client()
+    resp = await client.get("http://example.com/test")
+    assert resp.status_code == 429
+    data = resp.json()
+    assert data["error"] == "Too Many Requests"
+    assert resp.headers["retry-after"] == "60"
+
+
+class _ContentLengthTransport(httpx.AsyncBaseTransport):
+    """Test transport that returns JSON with explicit Content-Length."""
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        body = json.dumps({"name": "Alice", "age": 30, "extra": "data"})
+        content = body.encode()
+        return httpx.Response(
+            status_code=200,
+            content=content,
+            headers={
+                "Content-Type": "application/json",
+                "Content-Length": str(len(content)),
+            },
+            request=request,
+        )
+
+
+@pytest.mark.asyncio
+async def test_schema_mismatch_fixes_content_length() -> None:
+    """Fix: schema-mismatch must update Content-Length after modifying the body."""
+    controller = ChaosController.get_instance()
+    controller.inject("cl-api", SchemaMismatchFault(missing_fields=["extra"]))
+    transport = _ContentLengthTransport()
+    chaos = _ChaosAsyncTransport("cl-api", transport)
+    client = httpx.AsyncClient(transport=chaos)
+    resp = await client.get("http://example.com/test")
+    body = resp.json()
+    assert "extra" not in body
+    assert "name" in body
+    # Content-Length must match the actual response body
+    assert resp.headers["content-length"] == str(len(resp.content))
+
+
+@pytest.mark.asyncio
 async def test_schema_mismatch_non_json_response() -> None:
     """Fix #6: schema-mismatch on non-JSON response should not crash with JSONDecodeError."""
     controller = ChaosController.get_instance()

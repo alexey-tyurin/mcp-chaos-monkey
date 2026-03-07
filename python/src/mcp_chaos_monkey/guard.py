@@ -15,7 +15,7 @@ def assert_chaos_allowed() -> None:
         raise ChaosNotAllowedError(
             "FATAL: Chaos framework must never run in production"
         )
-    if os.environ.get("CHAOS_ENABLED") != "true":
+    if os.environ.get("CHAOS_ENABLED", "").lower() != "true":
         raise ChaosNotAllowedError(
             "Chaos framework not enabled. Set CHAOS_ENABLED=true"
         )

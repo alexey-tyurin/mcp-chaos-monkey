@@ -34,9 +34,19 @@ function parseArgs(args: string[]): { command: string; positional: string[]; fla
   return { command, positional, flags };
 }
 
+function parseNumericFlag(flags: Map<string, string>, name: string, defaultValue: number): number {
+  const raw = flags.get(name);
+  if (raw === undefined) return defaultValue;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < 0) {
+    throw new Error(`--${name} must be a non-negative number, got '${raw}'`);
+  }
+  return value;
+}
+
 function buildFaultConfig(faultType: string, flags: Map<string, string>): FaultConfig {
-  const statusCode = Number(flags.get('status') ?? '503');
-  const delayMs = Number(flags.get('delay') ?? '1000');
+  const statusCode = parseNumericFlag(flags, 'status', 503);
+  const delayMs = parseNumericFlag(flags, 'delay', 1000);
 
   switch (faultType) {
     case 'latency':
@@ -52,7 +62,7 @@ function buildFaultConfig(faultType: string, flags: Map<string, string>): FaultC
     case 'connection-drop':
       return { type: 'connection-drop' };
     case 'rate-limit':
-      return { type: 'rate-limit', retryAfterSeconds: Number(flags.get('retry-after') ?? '60') };
+      return { type: 'rate-limit', retryAfterSeconds: parseNumericFlag(flags, 'retry-after', 60) };
     case 'schema-mismatch':
       const rawFields = flags.get('fields') ?? '';
       return { type: 'schema-mismatch', missingFields: rawFields ? rawFields.split(',') : [] };
@@ -98,7 +108,15 @@ export function runCli(argv: string[]): void {
 
       const config = buildFaultConfig(faultType, flags);
       const durationStr = flags.get('duration');
-      const durationMs = durationStr !== undefined ? Number(durationStr) * 1000 : undefined;
+      let durationMs: number | undefined;
+      if (durationStr !== undefined) {
+        const durationSec = Number(durationStr);
+        if (!Number.isFinite(durationSec) || durationSec < 0) {
+          process.stderr.write(`--duration must be a non-negative number, got '${durationStr}'\n`);
+          return;
+        }
+        durationMs = durationSec * 1000;
+      }
 
       const controller = ChaosController.getInstance();
       const faultId = controller.inject(target, config, durationMs);
