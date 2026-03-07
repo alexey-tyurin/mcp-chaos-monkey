@@ -101,13 +101,13 @@ def test_parse_accepts_valid_error_with_message() -> None:
     assert config.message == "service down"  # type: ignore[union-attr]
 
 
-def test_parse_rejects_afterBytes_key() -> None:
+def test_parse_rejects_after_bytes_key() -> None:
     """Fix #1: afterBytes was incorrectly mapped to after_ms. It should be rejected as unknown."""
     with pytest.raises(ValueError, match="Unknown field"):
         parse_fault_config({"type": "connection-drop", "afterBytes": 1024})
 
 
-def test_parse_accepts_afterMs_key() -> None:
+def test_parse_accepts_after_ms_camel_case_key() -> None:
     """afterMs should still be accepted and mapped to after_ms."""
     config = parse_fault_config({"type": "connection-drop", "afterMs": 500})
     assert config.after_ms == 500  # type: ignore[union-attr]
