@@ -31,6 +31,9 @@ export class ChaosController {
     if (config.probability !== undefined && (config.probability < 0 || config.probability > 1)) {
       throw new Error(`probability must be between 0 and 1, got ${String(config.probability)}`);
     }
+    if (durationMs !== undefined && (typeof durationMs !== 'number' || !Number.isFinite(durationMs) || durationMs < 0)) {
+      throw new Error('durationMs must be a non-negative finite number');
+    }
     const id = `${target}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.faults.set(id, {
       target,
@@ -43,9 +46,10 @@ export class ChaosController {
     return id;
   }
 
-  clear(faultId: string): void {
-    this.faults.delete(faultId);
-    logger.info({ faultId }, 'Chaos fault cleared');
+  clear(faultId: string): boolean {
+    const existed = this.faults.delete(faultId);
+    logger.info({ faultId }, existed ? 'Chaos fault cleared' : 'Chaos fault not found');
+    return existed;
   }
 
   clearAll(): void {

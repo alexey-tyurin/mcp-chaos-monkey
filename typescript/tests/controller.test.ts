@@ -177,6 +177,49 @@ describe('ChaosController', () => {
     });
   });
 
+  describe('durationMs validation', () => {
+    it('rejects NaN durationMs', () => {
+      const controller = ChaosController.getInstance();
+      expect(() =>
+        controller.inject('api', { type: 'error', statusCode: 503 }, NaN),
+      ).toThrow('durationMs must be a non-negative finite number');
+    });
+
+    it('rejects negative durationMs', () => {
+      const controller = ChaosController.getInstance();
+      expect(() =>
+        controller.inject('api', { type: 'error', statusCode: 503 }, -100),
+      ).toThrow('durationMs must be a non-negative finite number');
+    });
+
+    it('rejects Infinity durationMs', () => {
+      const controller = ChaosController.getInstance();
+      expect(() =>
+        controller.inject('api', { type: 'error', statusCode: 503 }, Infinity),
+      ).toThrow('durationMs must be a non-negative finite number');
+    });
+
+    it('accepts zero durationMs', () => {
+      const controller = ChaosController.getInstance();
+      expect(() =>
+        controller.inject('api', { type: 'error', statusCode: 503 }, 0),
+      ).not.toThrow();
+    });
+  });
+
+  describe('clear return value', () => {
+    it('returns true when clearing an existing fault', () => {
+      const controller = ChaosController.getInstance();
+      const id = controller.inject('api', { type: 'error', statusCode: 503 });
+      expect(controller.clear(id)).toBe(true);
+    });
+
+    it('returns false when clearing a non-existent fault', () => {
+      const controller = ChaosController.getInstance();
+      expect(controller.clear('non-existent-id')).toBe(false);
+    });
+  });
+
   describe('reset for isolation', () => {
     it('clears the singleton instance', () => {
       const a = ChaosController.getInstance();

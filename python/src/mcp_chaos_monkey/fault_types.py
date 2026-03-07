@@ -106,6 +106,7 @@ _FIELD_MAP: dict[str, str] = {
     "retry_after_seconds": "retry_after_seconds",
     "missingFields": "missing_fields",
     "missing_fields": "missing_fields",
+    "message": "message",
 }
 
 _FAULT_BUILDERS: dict[str, type] = {
@@ -148,4 +149,35 @@ def parse_fault_config(data: dict[str, Any]) -> FaultConfig:
             raise ValueError(f"probability must be between 0 and 1, got {prob}")
         kwargs["probability"] = prob
 
+    _validate_field_types(fault_type, kwargs)
     return cls(**kwargs)  # type: ignore[call-arg]
+
+
+_NUMERIC_FIELDS = {"delay_ms", "status_code", "hang_ms", "retry_after_seconds", "after_bytes"}
+
+
+def _validate_field_types(fault_type: str, kwargs: dict[str, Any]) -> None:
+    """Validate that parsed fields have the correct types."""
+    for key, value in kwargs.items():
+        if key == "probability":
+            continue
+        if key in _NUMERIC_FIELDS:
+            if value is not None and not isinstance(value, (int, float)):
+                raise ValueError(
+                    f"{key} must be a number for fault type '{fault_type}', got {type(value).__name__}"
+                )
+        elif key == "missing_fields":
+            if not isinstance(value, list) or not all(isinstance(v, str) for v in value):
+                raise ValueError(
+                    f"missing_fields must be a list of strings for fault type '{fault_type}'"
+                )
+        elif key == "message":
+            if value is not None and not isinstance(value, str):
+                raise ValueError(
+                    f"message must be a string for fault type '{fault_type}', got {type(value).__name__}"
+                )
+        elif key == "corrupt_response":
+            if not isinstance(value, bool):
+                raise ValueError(
+                    f"corrupt_response must be a boolean for fault type '{fault_type}', got {type(value).__name__}"
+                )

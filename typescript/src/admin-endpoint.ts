@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { Express, Request, Response } from 'express';
 import { assertChaosAllowed } from './guard.js';
 import { ChaosController } from './controller.js';
@@ -17,9 +17,10 @@ function checkAdminAuth(req: Request, res: Response): boolean {
   const requiredToken = process.env['CHAOS_ADMIN_TOKEN'];
   if (!requiredToken) return true;
   const provided = req.headers['authorization']?.replace(/^Bearer /, '') ?? '';
-  const a = Buffer.from(provided);
-  const b = Buffer.from(requiredToken);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+  const key = 'chaos-admin-auth';
+  const a = createHmac('sha256', key).update(provided).digest();
+  const b = createHmac('sha256', key).update(requiredToken).digest();
+  if (!timingSafeEqual(a, b)) {
     res.status(403).json({ error: 'Invalid or missing CHAOS_ADMIN_TOKEN' });
     return false;
   }
@@ -48,6 +49,15 @@ function validateFaultConfig(config: { type: string; [key: string]: unknown }): 
         return `config.${field} must be a finite number for fault type '${config.type}'`;
       }
     }
+  }
+  if (config.type === 'schema-mismatch') {
+    const mf = config['missingFields'];
+    if (mf !== undefined && (!Array.isArray(mf) || !mf.every((v: unknown) => typeof v === 'string'))) {
+      return 'config.missingFields must be an array of strings for fault type \'schema-mismatch\'';
+    }
+  }
+  if (config['message'] !== undefined && typeof config['message'] !== 'string') {
+    return 'config.message must be a string';
   }
   return null;
 }
@@ -84,6 +94,12 @@ export function registerChaosEndpoint(app: Express): void {
       if (validationError) {
         res.status(400).json({ error: validationError });
         return;
+      }
+      if (body.durationMs !== undefined) {
+        if (typeof body.durationMs !== 'number' || !Number.isFinite(body.durationMs) || body.durationMs < 0) {
+          res.status(400).json({ error: 'durationMs must be a non-negative finite number' });
+          return;
+        }
       }
       const controller = ChaosController.getInstance();
       const faultId = controller.inject(

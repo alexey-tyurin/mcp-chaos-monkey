@@ -49,9 +49,13 @@ def handle_inject(body: dict[str, Any]) -> dict[str, Any]:
             f"Missing or invalid field: config.type "
             f"(must be one of: {', '.join(sorted(_VALID_FAULT_TYPES))})"
         )
+    duration_ms = body.get("duration_ms")
+    if duration_ms is not None:
+        if not isinstance(duration_ms, (int, float)) or duration_ms < 0:
+            raise ValueError("duration_ms must be a non-negative number")
     controller = ChaosController.get_instance()
     config: FaultConfig = parse_fault_config(config_data)
-    fault_id = controller.inject(target, config, body.get("duration_ms"))
+    fault_id = controller.inject(target, config, duration_ms)
     return {"fault_id": fault_id}
 
 
@@ -112,6 +116,9 @@ def create_starlette_routes() -> list[Any]:
             return denied
         try:
             body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+        try:
             return JSONResponse(handle_inject(body))
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)
@@ -125,6 +132,9 @@ def create_starlette_routes() -> list[Any]:
             return denied
         try:
             body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "Invalid JSON body"}, status_code=400)
+        try:
             return JSONResponse(handle_clear(body))
         except ValueError as exc:
             return JSONResponse({"error": str(exc)}, status_code=400)

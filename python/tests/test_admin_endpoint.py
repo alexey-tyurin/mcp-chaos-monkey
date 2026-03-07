@@ -135,3 +135,39 @@ def test_handle_inject_unknown_config_fields() -> None:
             "target": "api",
             "config": {"type": "latency", "delayMS": 500},  # typo: delayMS vs delay_ms
         })
+
+
+def test_handle_inject_rejects_non_numeric_duration_ms() -> None:
+    with pytest.raises(ValueError, match="duration_ms must be a non-negative number"):
+        handle_inject({
+            "target": "api",
+            "config": {"type": "error", "status_code": 503},
+            "duration_ms": "not-a-number",
+        })
+
+
+def test_handle_inject_rejects_negative_duration_ms() -> None:
+    with pytest.raises(ValueError, match="duration_ms must be a non-negative number"):
+        handle_inject({
+            "target": "api",
+            "config": {"type": "error", "status_code": 503},
+            "duration_ms": -1000,
+        })
+
+
+def test_handle_inject_accepts_valid_duration_ms() -> None:
+    result = handle_inject({
+        "target": "api",
+        "config": {"type": "error", "status_code": 503},
+        "duration_ms": 5000,
+    })
+    assert "fault_id" in result
+
+
+def test_handle_inject_rejects_non_numeric_config_fields() -> None:
+    """Type validation on config fields via parse_fault_config."""
+    with pytest.raises(ValueError, match="delay_ms must be a number"):
+        handle_inject({
+            "target": "api",
+            "config": {"type": "latency", "delayMs": "not_a_number"},
+        })

@@ -4,10 +4,12 @@ import { assertChaosAllowed } from '../src/guard.js';
 describe('assertChaosAllowed', () => {
   const originalNodeEnv = process.env['NODE_ENV'];
   const originalChaosEnabled = process.env['CHAOS_ENABLED'];
+  const originalEnvironment = process.env['ENVIRONMENT'];
 
   beforeEach(() => {
     delete process.env['NODE_ENV'];
     delete process.env['CHAOS_ENABLED'];
+    delete process.env['ENVIRONMENT'];
   });
 
   afterEach(() => {
@@ -20,6 +22,11 @@ describe('assertChaosAllowed', () => {
       process.env['CHAOS_ENABLED'] = originalChaosEnabled;
     } else {
       delete process.env['CHAOS_ENABLED'];
+    }
+    if (originalEnvironment !== undefined) {
+      process.env['ENVIRONMENT'] = originalEnvironment;
+    } else {
+      delete process.env['ENVIRONMENT'];
     }
   });
 
@@ -78,5 +85,30 @@ describe('assertChaosAllowed', () => {
     expect(() => assertChaosAllowed()).toThrow(
       'FATAL: Chaos framework must never run in production',
     );
+  });
+
+  it('blocks when ENVIRONMENT is production (parity with Python guard)', () => {
+    process.env['ENVIRONMENT'] = 'production';
+    process.env['CHAOS_ENABLED'] = 'true';
+
+    expect(() => assertChaosAllowed()).toThrow(
+      'FATAL: Chaos framework must never run in production',
+    );
+  });
+
+  it('blocks when ENVIRONMENT is Production (case-insensitive)', () => {
+    process.env['ENVIRONMENT'] = 'Production';
+    process.env['CHAOS_ENABLED'] = 'true';
+
+    expect(() => assertChaosAllowed()).toThrow(
+      'FATAL: Chaos framework must never run in production',
+    );
+  });
+
+  it('passes when ENVIRONMENT is not production', () => {
+    process.env['ENVIRONMENT'] = 'staging';
+    process.env['CHAOS_ENABLED'] = 'true';
+
+    expect(() => assertChaosAllowed()).not.toThrow();
   });
 });

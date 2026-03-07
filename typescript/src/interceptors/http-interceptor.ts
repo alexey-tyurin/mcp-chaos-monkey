@@ -94,6 +94,10 @@ async function applyFault(
       setTimeout(() => { chaosAbort.abort(); }, 50);
       return fetchPromise;
     }
+    default: {
+      const _exhaustive: never = fault;
+      throw new Error(`Unhandled fault type: ${(_exhaustive as FaultConfig).type}`);
+    }
   }
 }
 

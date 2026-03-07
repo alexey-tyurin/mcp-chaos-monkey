@@ -209,4 +209,76 @@ describe('registerChaosEndpoint', () => {
       expect.objectContaining({ faultId: expect.any(String) }),
     );
   });
+
+  it('rejects inject with non-numeric durationMs', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/inject', {
+      target: 'api',
+      config: { type: 'error', statusCode: 503 },
+      durationMs: 'not-a-number',
+    });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('durationMs') }),
+    );
+  });
+
+  it('rejects inject with negative durationMs', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/inject', {
+      target: 'api',
+      config: { type: 'error', statusCode: 503 },
+      durationMs: -1000,
+    });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('durationMs') }),
+    );
+  });
+
+  it('rejects inject with non-array missingFields for schema-mismatch', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/inject', {
+      target: 'api',
+      config: { type: 'schema-mismatch', missingFields: 42 },
+    });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('missingFields') }),
+    );
+  });
+
+  it('rejects inject with non-string message', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/inject', {
+      target: 'api',
+      config: { type: 'error', statusCode: 503, message: 123 },
+    });
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ error: expect.stringContaining('message') }),
+    );
+  });
+
+  it('accepts inject with valid durationMs', () => {
+    const app = createMockApp();
+    registerChaosEndpoint(app as never);
+
+    const res = app.invoke('POST', '/chaos/inject', {
+      target: 'api',
+      config: { type: 'error', statusCode: 503 },
+      durationMs: 5000,
+    });
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ faultId: expect.any(String) }),
+    );
+  });
 });

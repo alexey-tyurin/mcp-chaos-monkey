@@ -141,10 +141,13 @@ export function runCli(argv: string[]): void {
 }
 
 // Direct execution — only when this file is the entry point
+import { fileURLToPath } from 'node:url';
+import { resolve } from 'node:path';
+
 const isDirectExecution =
   typeof process !== 'undefined' &&
   process.argv[1] !== undefined &&
-  import.meta.url === `file://${process.argv[1]}`;
+  fileURLToPath(import.meta.url) === resolve(process.argv[1]);
 
 if (isDirectExecution) {
   runCli(process.argv.slice(2));

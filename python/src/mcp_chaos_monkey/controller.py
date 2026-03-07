@@ -53,8 +53,11 @@ class ChaosController:
         self,
         target: FaultTarget,
         config: FaultConfig,
-        duration_ms: int | None = None,
+        duration_ms: int | float | None = None,
     ) -> str:
+        if duration_ms is not None:
+            if not isinstance(duration_ms, (int, float)) or duration_ms < 0:
+                raise ValueError("duration_ms must be a non-negative number")
         suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
         now = time.time() * 1000
         fault_id = f"{target}-{int(now)}-{suffix}"
@@ -74,10 +77,16 @@ class ChaosController:
         )
         return fault_id
 
-    def clear(self, fault_id: str) -> None:
+    def clear(self, fault_id: str) -> bool:
         with self._lock:
+            existed = fault_id in self._faults
             self._faults.pop(fault_id, None)
-        logger.info("Chaos fault cleared: %s", fault_id)
+        logger.info(
+            "Chaos fault %s: %s",
+            "cleared" if existed else "not found",
+            fault_id,
+        )
+        return existed
 
     def clear_all(self) -> None:
         with self._lock:

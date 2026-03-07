@@ -129,3 +129,32 @@ def test_probability_out_of_range_rejected() -> None:
 
     with pytest.raises(ValueError, match="probability must be between 0 and 1"):
         parse_fault_config({"type": "error", "status_code": 500, "probability": -0.5})
+
+
+def test_clear_returns_true_for_existing_fault() -> None:
+    controller = ChaosController.get_instance()
+    fault_id = controller.inject("api", ErrorFault(status_code=503))
+    assert controller.clear(fault_id) is True
+
+
+def test_clear_returns_false_for_nonexistent_fault() -> None:
+    controller = ChaosController.get_instance()
+    assert controller.clear("nonexistent-id") is False
+
+
+def test_inject_rejects_negative_duration_ms() -> None:
+    controller = ChaosController.get_instance()
+    with pytest.raises(ValueError, match="duration_ms must be a non-negative number"):
+        controller.inject("api", ErrorFault(status_code=503), duration_ms=-100)
+
+
+def test_inject_rejects_non_numeric_duration_ms() -> None:
+    controller = ChaosController.get_instance()
+    with pytest.raises(ValueError, match="duration_ms must be a non-negative number"):
+        controller.inject("api", ErrorFault(status_code=503), duration_ms="abc")  # type: ignore[arg-type]
+
+
+def test_inject_accepts_zero_duration_ms() -> None:
+    controller = ChaosController.get_instance()
+    fault_id = controller.inject("api", ErrorFault(status_code=503), duration_ms=0)
+    assert fault_id.startswith("api-")
