@@ -100,7 +100,6 @@ _FIELD_MAP: dict[str, str] = {
     "hang_ms": "hang_ms",
     "corruptResponse": "corrupt_response",
     "corrupt_response": "corrupt_response",
-    "afterBytes": "after_ms",
     "afterMs": "after_ms",
     "after_ms": "after_ms",
     "retryAfterSeconds": "retry_after_seconds",

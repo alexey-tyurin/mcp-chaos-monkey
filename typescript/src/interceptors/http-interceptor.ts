@@ -66,15 +66,16 @@ async function applyFault(
     }
     case 'schema-mismatch': {
       const realResponse = await originalFetch(input, init);
+      const targetUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
       let body: unknown;
       try {
         body = await realResponse.clone().json() as unknown;
       } catch {
-        logger.warn({ target: input }, 'schema-mismatch: upstream response is not valid JSON, returning as-is');
+        logger.warn({ target: targetUrl }, 'schema-mismatch: upstream response is not valid JSON, returning as-is');
         return realResponse;
       }
       if (typeof body !== 'object' || body === null || Array.isArray(body)) {
-        logger.warn({ target: input }, 'schema-mismatch: upstream JSON is not an object, returning as-is');
+        logger.warn({ target: targetUrl }, 'schema-mismatch: upstream JSON is not an object, returning as-is');
         return realResponse;
       }
       for (const field of fault.missingFields) {

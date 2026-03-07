@@ -24,6 +24,9 @@ def wrap_redis_with_chaos(
     Supports both sync ``redis.Redis`` and async ``redis.asyncio.Redis``.
     Returns an unwrap function that restores the original methods.
     """
+    if getattr(client, "_chaos_wrapped", None) is True:
+        raise RuntimeError("Client is already wrapped with chaos")
+
     originals: dict[str, Any] = {}
     is_async = asyncio.iscoroutinefunction(getattr(client, "get", None))
 
@@ -100,9 +103,12 @@ def wrap_redis_with_chaos(
 
             setattr(client, cmd, sync_wrapped)
 
+    client._chaos_wrapped = True  # noqa: SLF001
+
     def unwrap() -> None:
         for cmd_name, orig_fn in originals.items():
             setattr(client, cmd_name, orig_fn)
         originals.clear()
+        client._chaos_wrapped = False  # noqa: SLF001
 
     return unwrap

@@ -128,7 +128,9 @@ class ChaosController:
                         fault.config.probability is not None
                         and random.random() > fault.config.probability
                     ):
-                        # Probability check failed — do not fall through to other faults
+                        # First-match semantics: only the first matching fault for a
+                        # target is evaluated. If its probability check fails, no
+                        # further faults are tried.
                         break
                     fault.request_count += 1
                     matched_config = fault.config
@@ -160,6 +162,7 @@ class ChaosController:
     @classmethod
     def reset(cls) -> None:
         with cls._instance_lock:
-            if cls._instance is not None:
-                cls._instance.clear_all()
+            instance = cls._instance
             cls._instance = None
+        if instance is not None:
+            instance.clear_all()

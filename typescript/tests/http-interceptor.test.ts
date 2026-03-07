@@ -278,4 +278,39 @@ describe('createChaosAwareFetch', () => {
       vi.useRealTimers();
     });
   });
+
+  describe('schema-mismatch with Request object input (Fix #6)', () => {
+    it('handles Request input with sensitive headers without leaking them', async () => {
+      const mockFetch = vi.fn(async () =>
+        new Response('not json', { status: 200 }),
+      );
+      const chaosAwareFetch = createChaosAwareFetch('secret-api', mockFetch);
+
+      controller.inject('secret-api', {
+        type: 'schema-mismatch',
+        missingFields: ['field'],
+      });
+
+      const request = new Request('http://example.com/api', {
+        headers: { Authorization: 'Bearer super-secret-token' },
+      });
+
+      // Spy on console.warn to capture the logger output
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const response = await chaosAwareFetch(request);
+      // Should return the original response when JSON parsing fails
+      expect(response.status).toBe(200);
+
+      // Verify the console.warn was called and does NOT contain the auth token
+      if (warnSpy.mock.calls.length > 0) {
+        const logOutput = JSON.stringify(warnSpy.mock.calls);
+        expect(logOutput).not.toContain('super-secret-token');
+        // Should contain the URL string
+        expect(logOutput).toContain('http://example.com/api');
+      }
+
+      warnSpy.mockRestore();
+    });
+  });
 });

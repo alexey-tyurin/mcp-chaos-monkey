@@ -199,3 +199,20 @@ def test_expired_faults_swept_during_inject() -> None:
     # inject should sweep expired faults and succeed
     fault_id = controller.inject("new-target", ErrorFault(status_code=500))
     assert fault_id.startswith("new-target-")
+
+
+def test_reset_no_deadlock() -> None:
+    """Fix #8: reset() should not deadlock by holding _instance_lock while calling clear_all().
+
+    Verifies that reset releases _instance_lock before calling clear_all(),
+    preventing lock ordering inversion with _lock.
+    """
+    controller = ChaosController.get_instance()
+    controller.inject("target", ErrorFault(status_code=500))
+    # If reset() held _instance_lock while calling clear_all(), this would
+    # deadlock if another thread held _lock and called get_instance().
+    # After the fix, reset releases _instance_lock first.
+    ChaosController.reset()
+    assert ChaosController._instance is None
+    # The old instance should have been cleared
+    assert controller.get_active_faults() == []

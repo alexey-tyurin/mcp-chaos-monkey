@@ -73,3 +73,21 @@ def test_unknown_fault_type_passes_through() -> None:
     result = client.get("key")
     assert result == b"value"
     unwrap()
+
+
+def test_double_wrap_raises() -> None:
+    """Fix #10: Double-wrapping the same client should raise RuntimeError."""
+    client = _make_mock_redis()
+    unwrap = wrap_redis_with_chaos(client, "redis")
+    with pytest.raises(RuntimeError, match="already wrapped"):
+        wrap_redis_with_chaos(client, "redis")
+    unwrap()
+
+
+def test_unwrap_allows_rewrap() -> None:
+    """After unwrap, the client can be wrapped again."""
+    client = _make_mock_redis()
+    unwrap1 = wrap_redis_with_chaos(client, "redis")
+    unwrap1()
+    unwrap2 = wrap_redis_with_chaos(client, "redis")
+    unwrap2()

@@ -87,7 +87,8 @@ export class ChaosController {
 
       if (matchedConfig === null) {
         if (fault.config.probability !== undefined && Math.random() > fault.config.probability) {
-          // Probability check failed — do not fall through to other faults
+          // First-match semantics: only the first matching fault for a target is
+          // evaluated. If its probability check fails, no further faults are tried.
           break;
         }
         fault.requestCount++;

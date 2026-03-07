@@ -32,6 +32,38 @@ def configure_chaos_logger(factory: ChaosLoggerFactory) -> None:
     _logger_factory = factory
 
 
+class _LazyLogger:
+    """Proxy that delegates to the current logger factory on each call.
+
+    This ensures that calling ``configure_chaos_logger`` after modules have
+    already been imported still takes effect.
+    """
+
+    __slots__ = ("_name",)
+
+    def __init__(self, name: str) -> None:
+        self._name = name
+
+    def _get(self) -> ChaosLogger:
+        return _logger_factory(self._name)
+
+    def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        self._get().debug(msg, *args, **kwargs)
+
+    def info(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        self._get().info(msg, *args, **kwargs)
+
+    def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        self._get().warning(msg, *args, **kwargs)
+
+    def error(self, msg: str, *args: Any, **kwargs: Any) -> None:
+        self._get().error(msg, *args, **kwargs)
+
+
 def get_logger(name: str) -> ChaosLogger:
-    """Internal — used by all library modules."""
-    return _logger_factory(name)
+    """Internal — used by all library modules.
+
+    Returns a lazy proxy so that ``configure_chaos_logger`` takes effect
+    even when called after module import.
+    """
+    return _LazyLogger(name)  # type: ignore[return-value]

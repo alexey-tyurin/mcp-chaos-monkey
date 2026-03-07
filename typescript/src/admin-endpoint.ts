@@ -168,7 +168,7 @@ export function registerChaosEndpoint(app: Express): void {
   });
 
   if (process.env['CHAOS_ADMIN_TOKEN'] === undefined) {
-    logger.warn('CHAOS_ADMIN_TOKEN is not set — admin endpoints are unauthenticated');
+    logger.warn('CHAOS_ADMIN_TOKEN is not set — admin endpoints will reject all requests');
   }
   logger.info('Chaos admin endpoints registered at /chaos/*');
 }
