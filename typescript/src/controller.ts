@@ -12,6 +12,8 @@ interface ActiveFault {
 
 const logger = getLogger('chaos-controller');
 
+const MAX_FAULTS = 1000;
+
 export class ChaosController {
   private faults = new Map<string, ActiveFault>();
   private static instance: ChaosController | null = null;
@@ -33,6 +35,9 @@ export class ChaosController {
     }
     if (durationMs !== undefined && (typeof durationMs !== 'number' || !Number.isFinite(durationMs) || durationMs < 0)) {
       throw new Error('durationMs must be a non-negative finite number');
+    }
+    if (this.faults.size >= MAX_FAULTS) {
+      throw new Error(`Maximum number of active faults (${String(MAX_FAULTS)}) exceeded. Clear some faults first.`);
     }
     const id = `${target}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     this.faults.set(id, {
@@ -93,10 +98,11 @@ export class ChaosController {
     requestCount: number;
   }[] {
     const now = Date.now();
+    const expired: string[] = [];
     const result: { id: string; target: FaultTarget; type: string; requestCount: number }[] = [];
     for (const [id, f] of this.faults) {
       if (f.expiresAt !== null && now > f.expiresAt) {
-        this.faults.delete(id);
+        expired.push(id);
         continue;
       }
       result.push({
@@ -105,6 +111,9 @@ export class ChaosController {
         type: f.config.type,
         requestCount: f.requestCount,
       });
+    }
+    for (const id of expired) {
+      this.faults.delete(id);
     }
     return result;
   }

@@ -16,7 +16,6 @@ const VALID_FAULT_TYPES = new Set([
 function checkAdminAuth(req: Request, res: Response): boolean {
   const requiredToken = process.env['CHAOS_ADMIN_TOKEN'];
   if (requiredToken === undefined) {
-    logger.warn('CHAOS_ADMIN_TOKEN is not set — admin endpoints are unauthenticated');
     return true;
   }
   if (requiredToken === '') {
@@ -167,5 +166,8 @@ export function registerChaosEndpoint(app: Express): void {
     }
   });
 
+  if (process.env['CHAOS_ADMIN_TOKEN'] === undefined) {
+    logger.warn('CHAOS_ADMIN_TOKEN is not set — admin endpoints are unauthenticated');
+  }
   logger.info('Chaos admin endpoints registered at /chaos/*');
 }

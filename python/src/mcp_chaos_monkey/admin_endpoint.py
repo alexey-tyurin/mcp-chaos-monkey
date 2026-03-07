@@ -23,6 +23,8 @@ def _check_admin_auth(headers: dict[str, str] | None = None) -> str | None:
     required_token = os.environ.get("CHAOS_ADMIN_TOKEN")
     if required_token is None:
         return None
+    if required_token == "":
+        return "CHAOS_ADMIN_TOKEN is set but empty — refusing access"
     if headers is None:
         return "Invalid or missing CHAOS_ADMIN_TOKEN"
     provided = headers.get("authorization", "").removeprefix("Bearer ")

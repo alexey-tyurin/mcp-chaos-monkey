@@ -12,6 +12,8 @@ from .logger import get_logger
 
 logger = get_logger("chaos-controller")
 
+MAX_FAULTS = 1000
+
 
 @dataclass
 class _ActiveFault:
@@ -62,6 +64,11 @@ class ChaosController:
         now = time.time() * 1000
         fault_id = f"{target}-{int(now)}-{suffix}"
         with self._lock:
+            if len(self._faults) >= MAX_FAULTS:
+                raise ValueError(
+                    f"Maximum number of active faults ({MAX_FAULTS}) exceeded. "
+                    "Clear some faults first."
+                )
             self._faults[fault_id] = _ActiveFault(
                 target=target,
                 config=config,

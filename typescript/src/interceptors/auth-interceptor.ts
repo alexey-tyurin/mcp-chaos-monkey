@@ -43,8 +43,12 @@ function applyAuthFault(target: FaultTarget, res: Response, next: NextFunction):
     case 'timeout':
       // Hang for the specified duration then send 504 to avoid leaking connections
       setTimeout(() => {
-        if (!res.writableEnded) {
-          res.status(504).json({ error: 'Gateway Timeout (chaos)' });
+        try {
+          if (!res.writableEnded) {
+            res.status(504).json({ error: 'Gateway Timeout (chaos)' });
+          }
+        } catch (err: unknown) {
+          logger.error({ error: err instanceof Error ? err.message : String(err) }, 'Failed to send chaos timeout response');
         }
       }, fault.hangMs);
       return;

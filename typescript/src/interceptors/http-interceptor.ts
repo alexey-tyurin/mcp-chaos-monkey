@@ -91,7 +91,8 @@ async function applyFault(
         : chaosAbort.signal;
       const mergedInit = { ...init, signal: combinedSignal };
       const fetchPromise = originalFetch(input, mergedInit);
-      setTimeout(() => { chaosAbort.abort(); }, 50);
+      const abortDelayMs = fault.afterBytes ?? 0;
+      setTimeout(() => { chaosAbort.abort(); }, abortDelayMs);
       return fetchPromise;
     }
     default: {

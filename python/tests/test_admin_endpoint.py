@@ -174,12 +174,17 @@ def test_handle_inject_rejects_non_numeric_config_fields() -> None:
 
 
 def test_admin_auth_empty_token_rejects(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Fix: Empty CHAOS_ADMIN_TOKEN should not disable auth."""
+    """Fix ERR-2: Empty CHAOS_ADMIN_TOKEN should refuse access, not bypass auth."""
     monkeypatch.setenv("CHAOS_ADMIN_TOKEN", "")
-    # With empty token set, auth should require a valid token
-    # Since the token is empty, no Bearer token can match, so auth must fail
+    # Should reject even with a Bearer token
     result = _check_admin_auth({"authorization": "Bearer anything"})
-    assert result is not None  # should return error message
+    assert result is not None
+    # Should reject with no headers (the actual bypass scenario)
+    result = _check_admin_auth(None)
+    assert result is not None
+    # Should reject with empty Bearer (empty-to-empty comparison bypass)
+    result = _check_admin_auth({"authorization": "Bearer "})
+    assert result is not None
 
 
 def test_handle_inject_rejects_negative_numeric_fields() -> None:

@@ -158,3 +158,14 @@ def test_inject_accepts_zero_duration_ms() -> None:
     controller = ChaosController.get_instance()
     fault_id = controller.inject("api", ErrorFault(status_code=503), duration_ms=0)
     assert fault_id.startswith("api-")
+
+
+def test_max_faults_limit() -> None:
+    """MEM-1: Controller should reject faults when exceeding MAX_FAULTS."""
+    from mcp_chaos_monkey.controller import MAX_FAULTS
+
+    controller = ChaosController.get_instance()
+    for i in range(MAX_FAULTS):
+        controller.inject(f"target-{i}", ErrorFault(status_code=500))
+    with pytest.raises(ValueError, match="Maximum number of active faults"):
+        controller.inject("one-too-many", ErrorFault(status_code=500))

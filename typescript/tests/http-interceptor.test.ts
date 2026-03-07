@@ -198,9 +198,8 @@ describe('createChaosAwareFetch', () => {
   });
 
   describe('connection-drop fault', () => {
-    it('starts real fetch then aborts mid-stream', async () => {
+    it('aborts immediately when afterBytes is not set (defaults to 0)', async () => {
       const mockFetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-        // Simulate a long-running response that respects abort signal
         return new Promise<Response>((resolve, reject) => {
           const signal = init?.signal;
           if (signal?.aborted) {
@@ -210,7 +209,6 @@ describe('createChaosAwareFetch', () => {
           signal?.addEventListener('abort', () => {
             reject(new DOMException('The operation was aborted', 'AbortError'));
           });
-          // Never resolve — we'll get aborted
         });
       });
       const chaosAwareFetch = createChaosAwareFetch('weather-api', mockFetch);
@@ -219,6 +217,42 @@ describe('createChaosAwareFetch', () => {
 
       await expect(chaosAwareFetch('http://example.com')).rejects.toThrow('aborted');
       expect(mockFetch).toHaveBeenCalledOnce();
+    });
+
+    it('uses afterBytes as abort delay in ms (LOGIC-3)', async () => {
+      vi.useFakeTimers();
+      let aborted = false;
+      const mockFetch = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        return new Promise<Response>((resolve, reject) => {
+          const signal = init?.signal;
+          if (signal?.aborted) {
+            aborted = true;
+            reject(new DOMException('The operation was aborted', 'AbortError'));
+            return;
+          }
+          signal?.addEventListener('abort', () => {
+            aborted = true;
+            reject(new DOMException('The operation was aborted', 'AbortError'));
+          });
+        });
+      });
+      const chaosAwareFetch = createChaosAwareFetch('weather-api', mockFetch);
+
+      controller.inject('weather-api', { type: 'connection-drop', afterBytes: 200 });
+
+      const promise = chaosAwareFetch('http://example.com').catch((e: unknown) => e);
+
+      // Should not have aborted yet at 100ms
+      await vi.advanceTimersByTimeAsync(100);
+      expect(aborted).toBe(false);
+
+      // Should abort at 200ms
+      await vi.advanceTimersByTimeAsync(150);
+      const result = await promise;
+      expect(result).toBeInstanceOf(DOMException);
+      expect((result as DOMException).name).toBe('AbortError');
+
+      vi.useRealTimers();
     });
   });
 });

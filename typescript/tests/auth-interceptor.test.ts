@@ -124,6 +124,24 @@ describe('chaosAuthMiddleware', () => {
 
       vi.useRealTimers();
     });
+
+    it('does not throw if res.status() throws after timeout (ERR-3)', async () => {
+      vi.useFakeTimers();
+      const { req, res, next } = createMockReqRes();
+      Object.defineProperty(res, 'writableEnded', { value: false });
+      (res.status as ReturnType<typeof vi.fn>).mockImplementation(() => {
+        throw new Error('Headers already sent');
+      });
+      controller.inject('oauth-token', { type: 'timeout', hangMs: 500 });
+
+      chaosAuthMiddleware(req, res, next);
+
+      // Should not throw an uncaught exception
+      await vi.advanceTimersByTimeAsync(600);
+      expect(res.status).toHaveBeenCalledWith(504);
+
+      vi.useRealTimers();
+    });
   });
 
   it('calls next for unsupported fault types', () => {

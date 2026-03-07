@@ -232,4 +232,41 @@ describe('ChaosController', () => {
       expect(b.getActiveFaults()).toHaveLength(0);
     });
   });
+
+  describe('max faults limit (MEM-1)', () => {
+    it('throws when exceeding MAX_FAULTS', () => {
+      const controller = ChaosController.getInstance();
+      for (let i = 0; i < 1000; i++) {
+        controller.inject(`target-${String(i)}`, { type: 'error', statusCode: 500 });
+      }
+      expect(() =>
+        controller.inject('one-too-many', { type: 'error', statusCode: 500 }),
+      ).toThrow('Maximum number of active faults');
+    });
+  });
+
+  describe('getActiveFaults does not mutate during iteration (BUG-1)', () => {
+    it('safely handles expired faults without map mutation errors', () => {
+      vi.useFakeTimers();
+      const controller = ChaosController.getInstance();
+      // Inject several faults with short durations interleaved with permanent ones
+      controller.inject('a', { type: 'error', statusCode: 500 }, 100);
+      controller.inject('b', { type: 'error', statusCode: 500 });
+      controller.inject('c', { type: 'error', statusCode: 500 }, 100);
+      controller.inject('d', { type: 'error', statusCode: 500 });
+
+      vi.advanceTimersByTime(200);
+
+      // Should not throw and should only return non-expired faults
+      const faults = controller.getActiveFaults();
+      const targets = faults.map(f => f.target);
+      expect(targets).toContain('b');
+      expect(targets).toContain('d');
+      expect(targets).not.toContain('a');
+      expect(targets).not.toContain('c');
+      expect(faults).toHaveLength(2);
+
+      vi.useRealTimers();
+    });
+  });
 });
