@@ -66,4 +66,4 @@ def get_logger(name: str) -> ChaosLogger:
     Returns a lazy proxy so that ``configure_chaos_logger`` takes effect
     even when called after module import.
     """
-    return _LazyLogger(name)  # type: ignore[return-value]
+    return _LazyLogger(name)
