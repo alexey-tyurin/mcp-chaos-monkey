@@ -20,7 +20,7 @@ ChaosLoggerFactory = Callable[[str], ChaosLogger]
 
 def create_default_logger(name: str) -> ChaosLogger:
     """Create a default logger using stdlib logging."""
-    return logging.getLogger(f"mcp_chaos_monkey.{name}")  # type: ignore[return-value]
+    return logging.getLogger(f"mcp_chaos_monkey.{name}")
 
 
 _logger_factory: ChaosLoggerFactory = create_default_logger

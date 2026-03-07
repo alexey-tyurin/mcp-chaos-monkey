@@ -151,7 +151,7 @@ def parse_fault_config(data: dict[str, Any]) -> FaultConfig:
         kwargs["probability"] = prob
 
     _validate_field_types(fault_type, kwargs)
-    return cls(**kwargs)  # type: ignore[call-arg]
+    return cls(**kwargs)  # type: ignore[no-any-return]
 
 
 _NUMERIC_FIELDS = {"delay_ms", "status_code", "hang_ms", "retry_after_seconds", "after_ms"}
